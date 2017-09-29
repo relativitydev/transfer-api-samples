@@ -11,6 +11,8 @@ namespace Relativity.Transfer
     using System.Net;
     using System.Threading;
 
+    using Relativity.Logging;
+
     /// <summary>
     /// Represents a sample console application to demo basic Transfer API usage.
     /// </summary>
@@ -29,7 +31,22 @@ namespace Relativity.Transfer
 
             try
             {
-                ExecuteUploadDemo();
+                // Setup global logging parameters for all transfers.
+                LogSettings.Instance.ApplicationName = "Sample App";
+                LogSettings.Instance.LogFile = Path.Combine(Environment.CurrentDirectory,
+                    $"sample-{DateTime.Now.ToLongDateString()}.log");
+                LogSettings.Instance.LogIntervalSeconds = 1;
+                LogSettings.Instance.MinimumLogLevel = LoggingLevel.Debug;
+
+                // These provide useful transfer statistics information.
+                LogSettings.Instance.StatisticsLogEnabled = true;
+                LogSettings.Instance.StatisticsLogIntervalSeconds = 1;
+
+                // Using a custom transfer log to send all entries to a Serilog sink.
+                using (ITransferLog transferLog = new SerilogTransferLog())
+                {
+                    ExecuteUploadDemo(transferLog);
+                }
             }
             catch (Exception e)
             {
@@ -44,7 +61,10 @@ namespace Relativity.Transfer
         /// <summary>
         /// Executes an upload demo.
         /// </summary>
-        private static async void ExecuteUploadDemo()
+        /// <param name="transferLog">
+        /// The custom transfer log.
+        /// </param>
+        private static async void ExecuteUploadDemo(ITransferLog transferLog)
         {
             // The context object is used to decouple operations such as progress from other TAPI objects.
             TransferContext context = new TransferContext { StatisticsRateSeconds = .5 };
@@ -84,9 +104,9 @@ namespace Relativity.Transfer
             Uri relativityHost = new Uri("https://relativity_host.com/Relativity");
             IHttpCredential credential = new BasicAuthenticationCredential("jsmith@example.com", "UnbreakableP@ssword777");
             int workspaceId = 1027428;
-
-            // The CreateClientAsync method chooses the best client at runtime.  
-            using (var host = new RelativityTransferHost(new RelativityConnectionInfo(relativityHost, credential, workspaceId)))
+            
+            // The CreateClientAsync method chooses the best client at runtime.
+            using (IRelativityTransferHost host = new RelativityTransferHost(new RelativityConnectionInfo(relativityHost, credential, workspaceId), transferLog))
             using (ITransferClient client = await host.CreateClientAsync(cancellationTokenSource.Token))
             {
                 // Display a friendly name for the client that was just created.
@@ -101,8 +121,7 @@ namespace Relativity.Transfer
                 using (var job = await client.CreateJobAsync(uploadRequest, cancellationTokenSource.Token))
                 {
                     // TODO: Update this collection with valid source paths to upload.
-                    job.AddPaths(
-                        new[] { new TransferPath { SourcePath = @"C:\Datasets\transfer-api-sample\sample.pdf" } });
+                    job.AddPaths(new[] { new TransferPath {SourcePath = @"C:\Datasets\transfer-api-sample\sample.pdf"} });
 
                     // Await completion of the job up to the specified max time period. Events will continue to provide feedback.
                     ITransferResult uploadResult = await job.CompleteAsync(cancellationTokenSource.Token);
