@@ -40,6 +40,9 @@ namespace Relativity.Transfer
                 LogSettings.Instance.StatisticsLogEnabled = true;
                 LogSettings.Instance.StatisticsLogIntervalSeconds = 1;
 
+                // If a transfer log isn't specified, Relativity Logging is always used. You can optionally construct the transfer log and pass the ILog instance too.
+                //// using (ITransferLog transferLog = new RelativityTransferLog(logInstance))
+
                 // Using a custom transfer log to send all entries to Serilog.
                 using (ITransferLog transferLog = new CustomTransferLog())
                 {
