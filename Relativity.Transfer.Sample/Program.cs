@@ -33,17 +33,15 @@ namespace Relativity.Transfer
             {
                 // Setup global logging parameters for all transfers.
                 LogSettings.Instance.ApplicationName = "Sample App";
-                LogSettings.Instance.LogFile = Path.Combine(Environment.CurrentDirectory,
-                    $"sample-{DateTime.Now.ToLongDateString()}.log");
                 LogSettings.Instance.LogIntervalSeconds = 1;
                 LogSettings.Instance.MinimumLogLevel = LoggingLevel.Debug;
 
-                // These provide useful transfer statistics information.
+                // Enabling this setting automatically logs useful transfer statitistics.
                 LogSettings.Instance.StatisticsLogEnabled = true;
                 LogSettings.Instance.StatisticsLogIntervalSeconds = 1;
 
-                // Using a custom transfer log to send all entries to a Serilog sink.
-                using (ITransferLog transferLog = new SerilogTransferLog())
+                // Using a custom transfer log to send all entries to Serilog.
+                using (ITransferLog transferLog = new CustomTransferLog())
                 {
                     ExecuteUploadDemo(transferLog);
                 }
