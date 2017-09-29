@@ -1,10 +1,11 @@
 # Relativity Transfer API for .NET
-You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, HTTP, SMB, and Aspera. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing.
+You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, HTTP, SMB, and Aspera. You can also stream data from Relativity. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing. Unlike the Import API, TAPI does not create Relativity objects associated with the data, for example, documents and RDOs.
+
+***Important!**  We're providing TAPI as a preview release so that you can evaluate it and provide us with feedback. The preview release offers a functional API, which will continue to undergo minor contract changes and further enhancements.*
 
 TAPI features include:
-* Client-based design with no external or installation dependencies
-* All dependencies are merged into a single assembly with `ILMerge`
 * Only asynchronous methods
+* Thread-safe
 * Transfers in a single request or by a request job
 * Cancellation using CancellationToken
 * Progress using context object
@@ -16,14 +17,6 @@ We are  providing a sample solution to help you get started developing your own 
 
 ## Target Framework
 * .NET 4.6.2
-* AnyCPU
-
-## Versioning
-* The library uses [the semantic versioning scheme](http://semver.org/): The version number reflects whether the release is a major release, a minor release, or a patch, for example:
-
-* 1.1 – HTTP support added
-* 1.0 – Initial release
-
 
 ## Dependencies
 The following Relativity libraries must be referenced by a project in order to use TAPI:
@@ -33,6 +26,7 @@ The following Relativity libraries must be referenced by a project in order to u
 * ssh.net
 * Newtonsoft.Json
 
+To obtain TAPI libraries, contact [Relativity support](mailto:support@relativity.com).
 
 ## Components
 The Transfer API consists of the following key components:
@@ -50,8 +44,6 @@ The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.micro
 * File Share
 * HTTP
 
-You can also use TAPI to create your own transfer clients. For more information, see [ITransferClient](#itransferclient).
-
 ## Sample Solution
 
 The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications. The solution already includes all required references.
@@ -62,7 +54,7 @@ You can also run the solution to see a transfer in action. Prerequisites for run
 * A Relativity instance that you can connect to
 * Valid Relativity credentials
 
-Before running the solution, edit `Program.cs` to specify the Relativity URL, credentials, and workspace artifact ID. You can also specify the files to be transferred or make sure the hard-coded path (`C:\Datasets\sample.pdf`) exists. When you run the solution, the program displays detailed messages about the progress to the console. After the transfer completes, you can verify success by examining the Relativity file share directory.
+Before running the solution, edit `Program.cs` to specify the Relativity URL, credentials, and workspace artifact ID. You can also specify the files to be transferred or make sure the hard-coded path (`C:\Datasets\sample.pdf`) exists on your machine. When you run the solution, the program displays detailed messages about the progress to the console. After the transfer completes, you can verify success by examining the Relativity file share directory.
 
 The `Program.cs` logic is as follows:
 
@@ -106,7 +98,7 @@ public static void Main(string[] args)
 // The context object is used to decouple operations such as progress from other TAPI objects.
 TransferContext context = new TransferContext { StatisticsRateSeconds = .5 };
 ```
-You can set a number of options on the context object to optimize the transfer:
+You can set a number of options on the context object to for subscribing to events:
 
 ```csharp
 context.TransferPathIssue += (sender, args) =>
@@ -141,7 +133,7 @@ context.TransferStatistics += (sender, args) =>
 For more information, see [TransferContext](#transfercontext).
 
 ### Cancellation
-We then create the cancellation token. Note that the use of cancellation token logic is strongly recommended with all transfer operations:
+We then create the cancellation token. The use of cancellation token logic is strongly recommended with potentailly long-running transfer operations:
 
 ```csharp
 // The CancellationTokenSource is used to cancel the transfer operation.
@@ -157,6 +149,8 @@ Uri relativityHost = new Uri("https://relativity_host.com/Relativity");
 IHttpCredential credential = new BasicAuthenticationCredential("jsmith@example.com", "UnbreakableP@ssword777");
 int workspaceId = 1027428;
 ```
+TAPI supports basic authentication and OAuth2. For more information about Relativity OAuth2 clients, see {Relativity Documentation Site]("https://help.relativity.com/9.5/Content/Relativity/Authentication/OAuth2_clients.htm"). 
+
 ### Creating a client
 We then create a transfer client using the `CreateClientAsync()` method. Note the `using` statement with `CreateClientAsync()` (as well as other asynchronous TAPI operations that implement `IDisposable`):
 
@@ -168,7 +162,7 @@ using (ITransferClient client = await host.CreateClientAsync(cancellationTokenSo
     // Display a friendly name for the client that was just created.
     Console.WriteLine($"Client {client.DisplayName} has been created.");
 ```
-The `CreateClientAsync()` method queries the specified Relativity workspace for configured transfer methods (Aspera, file share, or HTTP) and selects the optimal method at runtime. Note that you can also use the ``CreateClient`` method to create custom transfer clients. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
+The `CreateClientAsync()` method queries the specified Relativity workspace for configured transfer methods (Aspera, file share, or HTTP) to determine which clients would be supported and selects the optimal method at runtime. Note that you can also use the ``CreateClient`` method to explicitly instruct TAPI to construct a certain type of client client, for example, if you know that FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
 
 ###  Setting up a transfer request job
 Next, we retrieve Relativity workspace details to get the UNC path of the destination share, and use it to create the `TransferRequest` object:
@@ -180,7 +174,7 @@ TransferRequest uploadRequest = TransferRequest.ForUploadJob(targetPath, context
 ```
 Note that this is where we specify the `TransferContext` object created earlier as the optional parameter for the TransferRequest. 
 
-In cases when the file paths are not known and you want to avoid calling `TransferAsync` one file at a time (as the paths are discovered), use the transfer via job (`TransferRequest.ForUploadJob()`). Transfer via a request (`TransferRequest.ForUpload()` method) must be used when the list of file paths to be transferred is already known. For more information, see [Transfer via Request](#transfer-via-request) and [Transfer via Job](#transfer-via-job).
+In cases when the file paths are not known and you want to avoid calling `TransferAsync` one file at a time (as the paths are discovered), use the transfer via job (`TransferRequest.ForUploadJob()`). TAPI jobs provide a mechanism for controlling the lifecycle of the job and adding paths as they become known without incurring a performance hit. Transfer via a request (`TransferRequest.ForUpload()` method) can be used when the list of file paths to be transferred is already known. For more information, see [Transfer via request](#transfer-via-request) and [Transfer via job](#transfer-via-job).
 
 ### Wait for job completion and results
 We then create a transfer job. After that, we add file paths to the asynchronous queue and perform immediate transfers:
