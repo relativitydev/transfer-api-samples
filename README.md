@@ -58,7 +58,39 @@ Before running the solution, edit `Program.cs` to specify the Relativity URL, cr
 
 The `Program.cs` logic is as follows:
 
-The `Main()` method is used to instantiate the `ExecuteUploadDemo` class:
+The `Main()` method is used to set up the application logging:
+```csharp
+try
+{    
+    // Setup global logging parameters for all transfers.    
+    LogSettings.Instance.ApplicationName = "Sample App";    
+    LogSettings.Instance.LogIntervalSeconds = 1;    
+    LogSettings.Instance.MinimumLogLevel = LoggingLevel.Debug;    
+
+    // Enabling this setting automatically logs useful transfer statitistics.    
+    LogSettings.Instance.StatisticsLogEnabled = true;    
+    LogSettings.Instance.StatisticsLogIntervalSeconds = 1;   
+
+    // Using a custom transfer log to send all entries to Serilog.    
+    using (ITransferLog transferLog = new CustomTransferLog())    
+    {        
+        ExecuteUploadDemo(transferLog);    
+    }
+    }
+    catch (Exception e)
+    {    
+        Console.WriteLine("A serious transfer failure has occurred. Error: " + e);
+    }
+    finally
+    {    
+        Console.ReadLine();
+    }
+}
+```
+
+Note the use of the of a custom `ITransferLog` object and the `ApplicationName` property to make the logs more user-friendly. We assume that in most cases you would be using your own preferred logging framework when writing custom transfer applications.
+
+We then instantiate the ExecuteUploadDemo class:
 
 ```csharp
 public static void Main(string[] args)
@@ -205,7 +237,7 @@ Finally, we write transfer results out to the console.
 The following sections provide detailed reference for the Transfer API operations illustrated by the sample program above.
 
 ## Usage
-The next sections cover Transfer API usage including:
+The next sections cover TAPI usage including:
 
 * [RelativityConnectionInfo](#relativityconnectioninfo)
 * [RelativityTransferHost](#relativitytransferhost)
@@ -230,7 +262,7 @@ The next sections cover Transfer API usage including:
 * [Binding Redirect for NewtonSoft.Json](#binding-redirect-for-newtonsoftjson)
 
 ### RelativityConnectionInfo
-The first thing you must do is construct a RelativityConnectionInfo object, which requires the following:
+The first thing you must do is construct a `RelativityConnectionInfo` object, which requires the following:
 
 | Property        | Description |
 | --------------- |-----------------------------------------------------------------------------------|
@@ -249,17 +281,17 @@ var connectionInfo = new RelativityConnectionInfo(
 ```
 
 ### RelativityTransferHost
-Given the RelativityConnectionInfo object, the RelativityTransferHost object is then constructed. This object implements IDisposable to manage object lifecycles and should employ a using block.
+Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block.
 
 ```csharp
 using (var host = new RelativityTransferHost(connectionInfo))
 { }
 ```
 
-***Note:** This object implements the **IDisposable** interface to ensure the life-cycle is managed properly.*
+***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
 
 ### ClientConfiguration
-Before you can create a client, you have to provide a ClientConfiguration instance. If you know which client you would like to construct, choose strongly-typed class object that derives from ClientConfiguration. As you might expect, there are a number client specific properties to control the client transfer behavior:
+Before you can create a client, you have to provide a `ClientConfiguration` instance. If you know which client you would like to construct, choose strongly-typed class object that derives from `ClientConfiguration`. As you might expect, there are a number client specific properties to control the client transfer behavior:
 
 | Property                   | Description |
 | ---------------------------| -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -274,11 +306,11 @@ Before you can create a client, you have to provide a ClientConfiguration instan
 | PreCalculateJobSize        | The value indicating whether the overall job size is pre-calculated to use more accurate byte-level progress and statistics. Care should be taken when using this setting on massive datasets. |
 | PreserveDates              | The value indicating whether file dates ( metadata) are preserved. |
 | TimeoutSeconds             | The timeout. This value is typically used whenever executing a web-service. |
-| ValidateSourcePaths        | The value indicating whether to validate source paths before they're added to the job queue. An **ArgumentException** is thrown when a validation failure occurs. |
+| ValidateSourcePaths        | The value indicating whether to validate source paths before they're added to the job queue. An `ArgumentException` is thrown when a validation failure occurs. |
 
 
 ### ITransferClient
-The API caller uses the transfer host to construct the appropriate transfer client. This object implements IDisposable to manage client specific object lifecycles. **MEF** (Managed Extensibility Framework) is used to dynamically construct the appropriate instance.
+The API caller uses the transfer host to construct the appropriate transfer client. This object implements `IDisposable` to manage client specific object lifecycles. **MEF** is used to dynamically construct the appropriate instance.
 
 ```csharp
 // I need an Aspera client.
@@ -303,11 +335,11 @@ using (ITransferClient client = host.CreateClient(new ClientConfiguration(existi
 }
 ```
 
-***Note:** This object implements the **IDisposable** interface to ensure the life-cycle is managed properly.*
+***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
 
 
-### Dynamic Transfer Client
-In the above examples, it's understood that the configuration object specifies which client to construct. The "ClientId" property contained within the ClientConfiguration object provides MEF enough information to construct the appropriate client.
+### Dynamic transfer client
+In the above examples, it's understood that the configuration object specifies which client to construct. The `ClientId` property contained within the `ClientConfiguration` object provides MEF enough information to construct the appropriate client.
 
 In some circumstances, you might not want to choose the client; rather, you would like TAPI to make the choice on your behalf. In this model, client metadata is retrieved via MEF and they're sorted from best to worst. Given a list of potential clients, TAPI runs a support check (see below) to determine if the client is fully supported in both Relativity and the client environment. Since this can take 10-15 seconds, the operation is asynchronous.
 
@@ -317,7 +349,7 @@ using (ITransferClient client = await host.CreateClientAsync(new ClientConfigura
 }
 ```
 
-***Note:** This object implements the **IDisposable** interface to ensure the life-cycle is managed properly.*
+***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
 
 ### ITransferClientStrategy
 
@@ -338,8 +370,8 @@ interface ITransferClientStrategy
 
 The caller is provided with the Relativity instance and all discovered transfer client plugin metadata. The returned collection is then used to provide a sorted list of candidates to use.
 
-### Client Support Check
-Given a transfer client object, the SupportCheckAsync method is called to perform the following checks:
+### Client support check
+Given a transfer client object, the `SupportCheckAsync` method is called to perform the following checks:
 
 * Verify the client is supported by Relativity.
 * Verify the client is supported within the client-side environment.
@@ -355,8 +387,8 @@ using (ITransferClient client = host.CreateClient(new FileShareClientConfigurati
 }
 ```
 
-### Connection Check
-A connection check performs a small upload and download to not only verify connectivity but ensure support for reading and reading to and from storage. Likewise, a context object is provided to retrieve status messages. The check can be done on a per-client basis or a single method to exercise connection checks for all available clients.
+### Connection check
+A connection check performs a small upload and download to not only verify connectivity but to ensure support for reading from and writing to the storage. Likewise, a context object is provided to retrieve status messages. The check can be done on a per-client basis or a single method to exercise connection checks for all available clients.
 
 The following example verifies the file share associated with the configured workspace is defined and accessible.
 
@@ -381,7 +413,7 @@ using (ITransferClient client = host.CreateClient(new FileShareClientConfigurati
 
 
 ### IRemotePathResolver
-The TransferRequest object exposes optional SourcePathResolver and TargetPathResolver properties to take a given path and adapt it. The signature for this interface is as follows:
+The `TransferRequest` object exposes optional `SourcePathResolver` and `TargetPathResolver` properties to take a given path and adapt it. The signature for this interface is as follows:
 
 ```csharp
 interface IRemotePathResolver
@@ -393,7 +425,7 @@ interface IRemotePathResolver
 The primary use-case for path resolvers is adding backwards compatibility to a client. For example, the Aspera client employs resolvers to adapt UNC paths to native Aspera UNIX-style paths.
 
 ### IRetryStrategy
-The TransferRequest object exposes an optional RetryStrategy property to define a method that dictates how much time is spent in between retry attempts. The signature for this interface is as follows:
+The `TransferRequest` object exposes an optional `RetryStrategy` property to define a method that dictates how much time is spent in between retry attempts. The signature for this interface is as follows:
 
 ```csharp
 interface IRetryStrategy
@@ -402,7 +434,7 @@ interface IRetryStrategy
 }
 ```
 
-The Transfer API library provides a **RetryStrategies** static class to provide two common strategies:
+The TAPI library provides a `RetryStrategies` static class to provide two common strategies:
 
 * **Exponential backoff** - This is the default strategy where each attempt waits longer by a power of 2.
 * **Fixed Time** - This simply defines a constant wait period regardless of the number of attempts.
@@ -420,23 +452,23 @@ This object encapsulates a local or remote path and can be found throughout the 
 | TargetPath      | The **optional** target path. If not specified, this property is automatically updated with the same property defined in the transfer request. |
 | TargetFileName  | The **optional** target filename. If not specified, this property is automatically updated with the same property defined in the transfer request. |
 
-***Note:*** Both relative paths and paths transformed via **IRemotePathResolver** are automatically assigned to the TransferPath object.
+***Note:*** Both relative paths and paths transformed via `IRemotePathResolver` are automatically assigned to the `TransferPath` object.
 
 ### TransferRequest
-There are several options to submit transfers and all revolve around the TransferRequest object.
+There are several options to submit transfers and all revolve around the `TransferRequest` object.
 
 | Property           | Description |
 | ------------------ |------------------------------------------------------------------------------------------------------ |
 | ClientRequestId    | The **optional** client specified transfer request unique identifier for the entire request. If not specified, a value is automatically assigned. |
 | Context            | The **optional** transfer context to configure progress events and logging. |
-| Direction          | The **optional** transfer direction (Upload or Download). This is a global setting which, if specified, automatically updates all TransferPath objects **if not already assigned**. |
+| Direction          | The **optional** transfer direction (Upload or Download). This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
 | JobId              | The **optional** unique identifier for the current submission or job. If not specified, a value is automatically assigned. |
 | RetryStrategy      | The **optional** IRetryStrategy instance to define the amount of time to wait in between each retry attempt. By default, an exponential backoff strategy is assigned. |
-| SourcePathResolver | The **optional** resolver used to adapt source paths from one format to another. This is set to NullPathResolver by default. |
-| TargetPathResolver | The **optional** resolver used to adapt target paths from one format to another. This is set to NullPathResolver by default. |
+| SourcePathResolver | The **optional** resolver used to adapt source paths from one format to another. This is set to `NullPathResolver` by default. |
+| TargetPathResolver | The **optional** resolver used to adapt target paths from one format to another. This is set to `NullPathResolver` by default. |
 | Paths              | The transfer path objects. This is ignored when using a transfer job. |
 | Tag                | The **optional** object allows storing any custom object on the transfer request. |
-| TargetPath         | The transfer target path. This is a global setting which, if specified, automatically updates all TransferPath objects **if not already assigned**. |
+| TargetPath         | The transfer target path. This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
 
 
 Although this object can be constructed directly, a number of static methods have been added to simplify construction using several overloads including:
@@ -448,7 +480,7 @@ Although this object can be constructed directly, a number of static methods hav
 
 
 ### TransferResult
-Once the transfer is complete, the TransferResult object is returned and provides an overall summary.
+Once the transfer is complete, the `TransferResult` object is returned and provides an overall summary.
 
 | Property              | Description |
 | --------------------- |------------------------------------------------------------- |
@@ -488,11 +520,11 @@ Once a client is constructed, transfer jobs are created in one of two ways (see 
 * Retry count.
 * Retrieving a list of all processed job paths.
 
-***Note:** This object implements the **IDisposable** interface to ensure the life-cycle is managed properly.*
+***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
 
 
-### Transfer via Request
-If the **list of source paths is already known**, you simply construct the request object, call TransferAsync, and await the result.
+### Transfer via request
+If the **list of source paths is already known**, you simply construct the request object, call `TransferAsync`, and await the result.
 
 ```csharp
 using (ITransferClient client = host.CreateClient(configuration))
@@ -506,8 +538,8 @@ using (ITransferClient client = host.CreateClient(configuration))
 ```
 
 
-### Transfer via Job
-If the **list of source paths is unknown**, you want to avoid calling TransferAsync one file at a time. High-speed clients like Aspera require a significant amount of overhead to setup the transfer request and performance would suffer significantly. To address this scenario, the ITransferJob object can be constructed via the client instance. The general idea is to construct a job, continually add transfer paths to the queue as they become known, and then await completion.
+### Transfer via job
+If the **list of source paths is unknown**, you want to avoid calling `TransferAsync` one file at a time. High-speed clients like Aspera require a significant amount of overhead to setup the transfer request and performance would suffer significantly. To address this scenario, the `ITransferJob` object can be constructed via the client instance. The general idea is to construct a job, continually add transfer paths to the queue as they become known, and then await completion.
 
 It's understood that files are transferred as soon as they're added to the job queue.
 
@@ -533,8 +565,8 @@ using (ITransferJob job = await client.CreateJobAsync(request))
 ***Note:** Multiple jobs can be created; however, bandwidth constraints can lead to transfer errors.*
 
 
-### Transfer Events and Statistics
-All transfer events are exposed through the optional TransferContext object and include:
+### Transfer events and statistics
+All transfer events are exposed through the optional `TransferContext` object and include:
 
 | Event                | Description |
 | -------------------- |----------------------------------------------------------------------------------- |
@@ -545,7 +577,7 @@ All transfer events are exposed through the optional TransferContext object and 
 | TransferRequest      | Occurs when the overall transfer request is started or ended. |
 | TransferStatistics   | Occurs to provide overall progress, transfer rate, and total byte/file count info. |
 
-***Note:*** *The ITransferRequest object can take an optional TransferContext instance when event handling is required.*
+***Note:*** *The `ITransferRequest` object can take an optional `TransferContext` instance when event handling is required.*
 
 ```csharp
 var context = new TransferContext();
@@ -560,7 +592,7 @@ context.TransferStatistics += (sender, args) => { Console.WriteLine($"Transfer s
 TransferRequest request = TransferRequest.ForUpload(SourcePath, TargetPath, context);
 ```
 
-The **TransferStatistics** event is notable because it provides a wealth of useful runtime transfer info. The **TransferStatisticsEventArgs** class exposes an **ITransferStatistics** object and provides the following properties.
+The `TransferStatistics` event is notable because it provides a wealth of useful runtime transfer info. The `TransferStatisticsEventArgs` class exposes an `ITransferStatistics` object and provides the following properties.
 
 | Property              | Description |
 | --------------------- |-------------------------------------------------------- |
@@ -582,26 +614,26 @@ The **TransferStatistics** event is notable because it provides a wealth of usef
 * *Not all transfer clients are guaranteed to supply all listed statistics.*
 * *The rate at which statistics are raised is defined via StatisticsRateSeconds property defined on TransferContext.*
 
-### Error Handling and ITransferIssue
-If a fatal exception occurs, such as OutOfMemoryException, ThreadAbortException, or a general connection exception, **the rule is simple: the API throws TransferException**. This must be handled by the API user.
+### Error handling and ITransferIssue
+If a fatal exception occurs, such as `OutOfMemoryException`, `ThreadAbortException`, or a general connection exception, **the rule is simple: TAPI throws `TransferException`**. This must be handled by the API user.
 
-When dealing with requests containing thousands or even millions of files, you don't want to simply throw an exception when a file transfer error occurs. To support this type of error handling model, the ITransferIssue object encapsulates warning/error information. The API user can then decide how to handle these issues. It's understood that all issues are logged automatically.
+When dealing with requests containing thousands or even millions of files, it is not enough to simply throw an exception when a file transfer error occurs. To support this type of error handling model, the `ITransferIssue` object encapsulates warning/error information. The API user can then decide how to handle these issues. It's understood that all issues are logged automatically.
 
 The ITransferIssue object includes the following properties:
 
 | Property         | Description |
 | ---------------- |--------------------------------------------------------------------------------------------------------------------------------------- |
-| Attributes       | The bitwise transfer issue attributes (for example, Warning, Error, File, FileNotFound) |
+| Attributes       | The bitwise transfer issue attributes (for example, `Warning`, `Error`, `File`, `FileNotFound`) |
 | Code             | The client specific-warning or error code associated with the error. |
 | Index            | The issue order or index in which the error was added. |
 | MaxRetryAttempts | The maximum number of retry attempts. |
 | Message          | The message associated with this issue. |
-| Path             | The TransferPath object associated with the issue. This value can be null if the failure is unrelated to transferring a specific file. |
+| Path             | The `TransferPath` object associated with the issue. This value can be null if the failure is unrelated to transferring a specific file. |
 | RetryAttempt     | The current job retry attempt number. |
 | Timestamp        | The **local** time when the issue occurred. |
 
 
-The IssueAttributes enumeration provides common issues that can be combined (for example, FlagsAttribute) and occur across any transfer client.
+The `IssueAttributes` enumeration provides common issues that can be combined (for example, `FlagsAttribute`) and occur across any transfer client.
 
 | Name                 | Description |
 | -------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -642,12 +674,12 @@ foreach (ITransferIssue issue in result.Issues)
     }
 }
 ```
-### DateTime Objects Values
-All DateTime objects values used by the Transfer API are in local time.
+### DateTime objects values
+All `DateTime` objects values used by TAPI are in local time.
 
-### Binding Redirect for NewtonSoft.Json
+### Binding redirect for NewtonSoft.Json
 
-Relativity and the APIs consumed by Relativity use several different versions of the Newtonsoft.Json library, which can cause assembly version conflict at build time. This is the recommended assembly binding redirect to Newtonsoft.Json version 6.0.0.0 to add to the consuming application (`app.config`) or web (`web.config`) configuration file. It ensures that almost any version of `Newtonsoft.Json` will work with the Transfer API:
+Relativity and the APIs consumed by Relativity use several different versions of the Newtonsoft.Json library, which can cause assembly version conflict at build time. This is the recommended assembly binding redirect to Newtonsoft.Json version 6.0.0.0 to add to the consuming application (`app.config`) or web (`web.config`) configuration file. It ensures that almost any version of `Newtonsoft.Json` will work with the TAPI:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
