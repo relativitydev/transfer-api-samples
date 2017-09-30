@@ -36,7 +36,7 @@ namespace Relativity.Transfer
                 LogSettings.Instance.LogIntervalSeconds = 1;
                 LogSettings.Instance.MinimumLogLevel = LoggingLevel.Debug;
 
-                // Enabling this setting automatically logs useful transfer statitistics.
+                // Enabling this setting automatically logs useful transfer statistics.
                 LogSettings.Instance.StatisticsLogEnabled = true;
                 LogSettings.Instance.StatisticsLogIntervalSeconds = 1;
 
