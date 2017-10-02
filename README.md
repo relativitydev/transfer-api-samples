@@ -19,10 +19,9 @@ We are  providing a sample solution to help you get started developing your own 
 * .NET 4.6.2
 
 ## Dependencies
-The following Relativity libraries must be referenced by a project in order to use TAPI:
+The following libraries must be referenced by a project in order to use TAPI:
 
 * Polly
-* relativity.faspmanager
 * ssh.net
 * Newtonsoft.Json
 
@@ -37,14 +36,14 @@ The Transfer API consists of the following key components:
 * **Relativity.Transfer.TransferContext** - the context for transfer request operations, including relevant events and basic configuration.
 * **Relativity.Transfer.TransferPath** - the path that details the source, target, and optional filename properties.
 
-## Supported Transfer Clients
+## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to construct clients. Relativity supports the following clients:
 
 * Aspera
 * File Share
 * HTTP
 
-## Sample Solution
+## Sample solution
 
 The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications. The solution already includes all required references.
 
@@ -58,7 +57,7 @@ Before running the solution, edit `Program.cs` to specify the Relativity URL, cr
 
 The `Program.cs` logic is as follows:
 
-The `Main()` method is used to set up the application logging:
+We set up the application logging as the first step in the `Main()` method:
 ```csharp
 try
 {    
