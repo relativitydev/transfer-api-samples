@@ -1,6 +1,6 @@
 ﻿// ----------------------------------------------------------------------------
-// <copyright file="SerilogTransferLog.cs" company="kCura Corp">
-//   kCura Corp (C) 2017 All Rights Reserved.
+// <copyright file="CustomTransferLog.cs" company="kCura Corp">
+//   Relativity ODA LLC (C) 2017 All Rights Reserved.
 // </copyright>
 // ----------------------------------------------------------------------------
 

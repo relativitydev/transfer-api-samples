@@ -13,10 +13,10 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Relativity.Transfer.Sample")]
 [assembly: AssemblyDescription("A Relativity transfer client API sample console application.")]
 [assembly: AssemblyConfiguration("Release")]
-[assembly: AssemblyCompany("kCura Corp")]
+[assembly: AssemblyCompany("Relativity ODA LLC")]
 [assembly: AssemblyProduct("Relativity.Transfer.Sample")]
-[assembly: AssemblyCopyright("Copyright kCura Corp 2017")]
-[assembly: AssemblyTrademark("Copyright kCura Corp 2017")]
+[assembly: AssemblyCopyright("© Relativity")]
+[assembly: AssemblyTrademark("© Relativity")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
