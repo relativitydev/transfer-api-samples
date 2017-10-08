@@ -187,7 +187,7 @@ We then create a transfer client using the `CreateClientAsync()` method. Note th
 
 ```csharp
 // The CreateClientAsync method chooses the best client at runtime.  
-using (var host = new RelativityTransferHost(new RelativityConnectionInfo(relativityHost, credential, workspaceId)))
+using (IRelativityTransferHost host = new RelativityTransferHost(new RelativityConnectionInfo(relativityHost, credential, workspaceId)))
 using (ITransferClient client = await host.CreateClientAsync(cancellationTokenSource.Token))
 {
     // Display a friendly name for the client that was just created.
@@ -257,6 +257,7 @@ The next sections cover TAPI usage including:
 * [Transfer via Job](#transfer-via-job)
 * [Transfer Events and Statistics](#transfer-events-and-statistics)
 * [Error Handling and ITransferIssue](#error-handling-and-itransferissue)
+* [Logging](#logging)
 * [DateTime object values](#datetime-objects-values)
 * [Binding Redirect for NewtonSoft.Json](#binding-redirect-for-newtonsoftjson)
 
@@ -283,7 +284,7 @@ var connectionInfo = new RelativityConnectionInfo(
 Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block.
 
 ```csharp
-using (var host = new RelativityTransferHost(connectionInfo))
+using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo))
 { }
 ```
 
@@ -378,7 +379,7 @@ Given a transfer client object, the `SupportCheckAsync` method is called to perf
 The following example verifies the file share associated with the configured workspace is defined and accessible.
 
 ```csharp
-using (var host = new RelativityTransferHost(connectionInfo))
+using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo))
 using (ITransferClient client = host.CreateClient(new FileShareClientConfiguration()))
 {
     ISupportCheckResult result = await client.SupportCheckAsync();
@@ -392,7 +393,7 @@ A connection check performs a small upload and download to not only verify conne
 The following example verifies the file share associated with the configured workspace is defined and accessible.
 
 ```csharp
-using (var host = new RelativityTransferHost(connectionInfo))
+using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo))
 using (ITransferClient client = host.CreateClient(new FileShareClientConfiguration()))
 {
     DiagnosticsContext context = new DiagnosticsContext();
@@ -673,6 +674,47 @@ foreach (ITransferIssue issue in result.Issues)
     }
 }
 ```
+
+### Logging
+TAPI supports Relativity Logging and, specifically, the `ILog` object. There may be scenarios, however, where 3rd party developers may wish to use their own logging framework. The `ITransferLog` interface is an extensibility point to address this possible use-case. Similar to other TAPI objects, this interface implements `IDisposable` to manage object lifecycles.
+
+Relativity Logging is the default logging implementation if none is explicitly provided. The next example demonstrates how a Relativity Logging `ILog` object is specified when creating the `RelativityTransferHost` object.
+
+```csharp
+ILog log; // Retrieved or constructed via Relativity Logging.
+using (ITransferLog log = new RelativityTransferLog(log))
+using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo, log))
+{}
+```
+
+***Notes:*** 
+
+* *If an ITransferLog object isn't provided, `Relativity.Logging.Log.Logger` is used to retrieve the current Relativity Logging instance.*
+* *If a serious error occurs attempting to retrieve the `ILog` or an exception is thrown performing Relativity Logging setup, the `NullTransferLog` is constructed to avoid unnecessary fatal errors.*
+
+#### Global Log Settings
+A small number of common log settings are exposed by the `LogSettings` static class. All of these properties are considered optional.
+
+| Property                     | Description |
+| ---------------------------- |--------------------------------------------------------------------------------------------------------------------------------------- |
+| ApplicationName              | The name of the application. This value is prefixed within all log entries. |
+| LogFile                      | The full path to the log file. This should be honored by custom `ITransferLog` implementations. |
+| MinimumLogLevel              | The minimum log level. This should be honored by custom `ITransferLog` implementations. |
+| StatisticsLogEnabled         | Automatically log transfer statistics. |
+| StatisticsLogIntervalSeconds | The interval, in seconds, that transer statistics are logged. |
+
+#### Log Formatting
+When a transfer request is made, all log entries are prefixed with useful property values to improve log searching and filtering to a particular request. This includes the following values:
+
+* ApplicationName (via `LogSettings`)
+* ClientRequestId (via `ITransferRequest`)
+* Direction (via `ITransferRequest`)
+
+***Note:** The `ApplicationName` should be set to an appropriate value. The value defaults to TAPI if not specified.*
+
+#### Log Entries and Templates
+Relativity Logging uses [Serilog](https://serilog.net/) to format each log entry. Because Relativity Logging is the presumed default, the [Serilog DSL](https://github.com/serilog/serilog/wiki/Writing-Log-Events) is used throughout TAPI. When using a custom `ITransferLog` implementation, the message template and properties must be converted to a string; otherwise, an exception is thrown when calling the String.Format method. [This StackOverflow page](https://stackoverflow.com/questions/26875831/how-do-i-render-a-template-and-its-arguments-manually-in-serilog) provides an example on how to use the `MessageTemplateParser` to convert the Serilog message and properties to a properly formatted string.
+
 ### DateTime objects values
 All `DateTime` objects values used by TAPI are in local time.
 
