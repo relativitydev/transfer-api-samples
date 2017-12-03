@@ -8,8 +8,6 @@ namespace Relativity.Transfer
 {
     using System;
 
-    using Relativity.Logging;
-
     using Serilog;
     using Serilog.Enrichers;
 
@@ -224,48 +222,16 @@ namespace Relativity.Transfer
         /// </returns>
         private static ILogger CreateLogger()
         {
-            var settings = LogSettings.Instance;
             var configuration = new LoggerConfiguration().MinimumLevel.Debug()
-                .Enrich.WithProperty("App", LogSettings.Instance.ApplicationName)
+                .Enrich.WithProperty("App", GlobalSettings.Instance.ApplicationName)
                 .Enrich.With(
                     new MachineNameEnricher(),
                     new ProcessIdEnricher(),
                     new ThreadIdEnricher());
-            if (settings.MinimumLogLevel != LoggingLevel.Debug)
-            {
-                switch (settings.MinimumLogLevel)
-                {
-                    case LoggingLevel.Verbose:
-                        configuration.MinimumLevel.Verbose();
-                        break;
+            configuration.MinimumLevel.Debug();
 
-                    case LoggingLevel.Information:
-                        configuration.MinimumLevel.Information();
-                        break;
-
-                    case LoggingLevel.Warning:
-                        configuration.MinimumLevel.Warning();
-                        break;
-
-                    case LoggingLevel.Error:
-                        configuration.MinimumLevel.Error();
-                        break;
-
-                    case LoggingLevel.Fatal:
-                        configuration.MinimumLevel.Fatal();
-                        break;
-
-                    default:
-                        configuration.MinimumLevel.Debug();
-                        break;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(settings.LogFile))
-            {
-                configuration = configuration.WriteTo.RollingFile(settings.LogFile);
-            }
-
+            // Provide a custom logfile here.
+            //// configuration = configuration.WriteTo.RollingFile(settings.LogFile);
             configuration = configuration.WriteTo.Console();
             configuration = configuration.WriteTo.Trace();
             return configuration.CreateLogger();

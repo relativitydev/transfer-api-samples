@@ -61,14 +61,10 @@ We set up the application logging as the first step in the `Main()` method:
 ```csharp
 try
 {    
-    // Setup global logging parameters for all transfers.    
-    LogSettings.Instance.ApplicationName = "Sample App";    
-    LogSettings.Instance.LogIntervalSeconds = 1;    
-    LogSettings.Instance.MinimumLogLevel = LoggingLevel.Debug;    
-
-    // Enabling this setting automatically logs useful transfer statistics.
-    LogSettings.Instance.StatisticsLogEnabled = true;    
-    LogSettings.Instance.StatisticsLogIntervalSeconds = 1;   
+    // Setup global settings for all transfers.
+    GlobalSettings.Instance.ApplicationName = "Sample App";    
+    GlobalSettings.Instance.StatisticsLogEnabled = true;    
+    GlobalSettings.Instance.StatisticsLogIntervalSeconds = 1;
 
     // Using a custom transfer log to send all entries to Serilog.    
     using (ITransferLog transferLog = new CustomTransferLog())    
@@ -257,8 +253,9 @@ The next sections cover TAPI usage including:
 * [Transfer via Job](#transfer-via-job)
 * [Transfer Events and Statistics](#transfer-events-and-statistics)
 * [Error Handling and ITransferIssue](#error-handling-and-itransferissue)
+* [Global Settings](#global-settings)
 * [Logging](#logging)
-* [DateTime object values](#datetime-objects-values)
+* [DateTime object values](#datetime-object-values)
 * [Binding Redirect for NewtonSoft.Json](#binding-redirect-for-newtonsoftjson)
 
 ### RelativityConnectionInfo
@@ -675,6 +672,22 @@ foreach (ITransferIssue issue in result.Issues)
 }
 ```
 
+### Global Settings
+A small number of common settings are exposed by the `GlobalSettings` static class. All of these properties are considered optional.
+
+| Property                     | Description |
+| ---------------------------- |--------------------------------------------------------------------------------------------------------------------------------------- |
+| ApplicationName              | The name of the application. This value is prefixed within all log entries. Default = `TAPI` |
+| LogPackageSourceFiles        | Specifies whether to log all source files added to the package. If true, the overhead can degrade package performance. Default = `false` |
+| MaxAllowedTargetDataRateMbps | The max target data rate, in Mbps units, allowed by the transfer API. Default = `600` |
+| PluginDirectory              | The directory where all plugins are located. Default = `Working directory` |
+| PluginFileNameFilter         | The file name filter to limit which files are searched for plugins. Default = `Relativity.Transfer` |
+| PluginFileNameMatch          | The file name match expression to limit which files are searched for plugins. Default = `Relativity.Transfer` |
+| PluginSearchOption           | Tthe file search option used when searching for plugins. Default = `SearchOption.TopDirectoryOnly` |
+| StatisticsLogEnabled         | Automatically log transfer statistics. Default = `false` |
+| StatisticsLogIntervalSeconds | The interval, in seconds, that transer statistics are logged. Default = `2.0` |
+| TempDirectory                | The directory used for temp storage. Default = 'Current user's temporary folder` |
+
 ### Logging
 TAPI supports Relativity Logging and, specifically, the `ILog` object. There may be scenarios, however, where 3rd party developers may wish to use their own logging framework. The `ITransferLog` interface is an extensibility point to address this possible use-case. Similar to other TAPI objects, this interface implements `IDisposable` to manage object lifecycles.
 
@@ -692,21 +705,10 @@ using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo,
 * *If an ITransferLog object isn't provided, `Relativity.Logging.Log.Logger` is used to retrieve the current Relativity Logging instance.*
 * *If a serious error occurs attempting to retrieve the `ILog` or an exception is thrown performing Relativity Logging setup, the `NullTransferLog` is constructed to avoid unnecessary fatal errors.*
 
-#### Global Log Settings
-A small number of common log settings are exposed by the `LogSettings` static class. All of these properties are considered optional.
-
-| Property                     | Description |
-| ---------------------------- |--------------------------------------------------------------------------------------------------------------------------------------- |
-| ApplicationName              | The name of the application. This value is prefixed within all log entries. |
-| LogFile                      | The full path to the log file. This should be honored by custom `ITransferLog` implementations. |
-| MinimumLogLevel              | The minimum log level. This should be honored by custom `ITransferLog` implementations. |
-| StatisticsLogEnabled         | Automatically log transfer statistics. |
-| StatisticsLogIntervalSeconds | The interval, in seconds, that transer statistics are logged. |
-
 #### Log Formatting
 When a transfer request is made, all log entries are prefixed with useful property values to improve log searching and filtering to a particular request. This includes the following values:
 
-* ApplicationName (via `LogSettings`)
+* ApplicationName (via `GlobalSettings`)
 * ClientRequestId (via `ITransferRequest`)
 * Direction (via `ITransferRequest`)
 
@@ -715,7 +717,7 @@ When a transfer request is made, all log entries are prefixed with useful proper
 #### Log Entries and Templates
 Relativity Logging uses [Serilog](https://serilog.net/) to format each log entry. Because Relativity Logging is the presumed default, the [Serilog DSL](https://github.com/serilog/serilog/wiki/Writing-Log-Events) is used throughout TAPI. When using a custom `ITransferLog` implementation, the message template and properties must be converted to a string; otherwise, an exception is thrown when calling the String.Format method. [This StackOverflow page](https://stackoverflow.com/questions/26875831/how-do-i-render-a-template-and-its-arguments-manually-in-serilog) provides an example on how to use the `MessageTemplateParser` to convert the Serilog message and properties to a properly formatted string.
 
-### DateTime objects values
+### DateTime object values
 All `DateTime` objects values used by TAPI are in local time.
 
 ### Binding redirect for NewtonSoft.Json

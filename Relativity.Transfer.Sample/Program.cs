@@ -11,8 +11,6 @@ namespace Relativity.Transfer
     using System.Net;
     using System.Threading;
 
-    using Relativity.Logging;
-
     /// <summary>
     /// Represents a sample console application to demo basic Transfer API usage.
     /// </summary>
@@ -31,14 +29,10 @@ namespace Relativity.Transfer
 
             try
             {
-                // Setup global logging parameters for all transfers.
-                LogSettings.Instance.ApplicationName = "Sample App";
-                LogSettings.Instance.LogIntervalSeconds = 1;
-                LogSettings.Instance.MinimumLogLevel = LoggingLevel.Debug;
-
-                // Enabling this setting automatically logs useful transfer statistics.
-                LogSettings.Instance.StatisticsLogEnabled = true;
-                LogSettings.Instance.StatisticsLogIntervalSeconds = 1;
+                // Setup global settings for all transfers.
+                GlobalSettings.Instance.ApplicationName = "Sample App";
+                GlobalSettings.Instance.StatisticsLogEnabled = true;
+                GlobalSettings.Instance.StatisticsLogIntervalSeconds = 1;
 
                 // If a transfer log isn't specified, Relativity Logging is always used. You can optionally construct the transfer log and pass the ILog instance too.
                 //// using (ITransferLog transferLog = new RelativityTransferLog(logInstance))
