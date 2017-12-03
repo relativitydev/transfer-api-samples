@@ -118,6 +118,12 @@ namespace Relativity.Transfer
                     // TODO: Update this collection with valid source paths to upload.
                     job.AddPaths(new[] { new TransferPath {SourcePath = @"C:\Datasets\transfer-api-sample\sample.pdf"} });
 
+                    //// Some clients support the ability to change the data rate at runtime.
+                    //if (job.IsDataRateChangeSupported)
+                    //{
+                    //    job.ChangeDataRate(0, 200);
+                    //}
+
                     // Await completion of the job up to the specified max time period. Events will continue to provide feedback.
                     ITransferResult uploadResult = await job.CompleteAsync(cancellationTokenSource.Token);
                     Console.WriteLine($"Upload transfer result: {uploadResult.Status}, Files: {uploadResult.TotalTransferredFiles}");
