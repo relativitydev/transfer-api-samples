@@ -79,23 +79,35 @@ The `Program.cs` logic is as follows:
 We set up the application logging as the first step in the `Main()` method:
 ```csharp
 try
-{    
-    // Setup global settings for all transfers.
-    GlobalSettings.Instance.ApplicationName = "Sample App";    
-    GlobalSettings.Instance.StatisticsLogEnabled = true;    
-    GlobalSettings.Instance.StatisticsLogIntervalSeconds = 1;
+    {
+        // Setup global settings for all transfers.
+        GlobalSettings.Instance.ApplicationName = "sample-app";
 
-    // Using a custom transfer log to send all entries to Serilog.    
-    using (ITransferLog transferLog = new CustomTransferLog())    
-    {        
-        ExecuteUploadDemo(transferLog);
+        // Don't be too aggressive with logging statistics.
+        GlobalSettings.Instance.StatisticsLogEnabled = true;
+        GlobalSettings.Instance.StatisticsLogIntervalSeconds = 2;
+
+        // Any attempt to exceed this max will throw an exception.
+        GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 100;
+
+        // All temp files can be stored in a specific directory or UNC share.
+        //// GlobalSettings.Instance.TempDirectory = @"C:\MyTemp";
+
+        // If a transfer log isn't specified, Relativity Logging is always used. You can optionally construct the transfer log and pass the ILog instance too.
+        //// using (ITransferLog transferLog = new RelativityTransferLog(logInstance))
+
+        // Using a custom transfer log to send all entries to Serilog.
+        using (ITransferLog transferLog = new CustomTransferLog())
+        {
+            ExecuteUploadDemo(transferLog);
+        }
     }
     catch (Exception e)
-    {    
+    {
         Console.WriteLine("A serious transfer failure has occurred. Error: " + e);
     }
     finally
-    {    
+    {
         Console.ReadLine();
     }
 }
@@ -141,7 +153,7 @@ public static void Main(string[] args)
 
 ```csharp
 // The context object is used to decouple operations such as progress from other TAPI objects.
-TransferContext context = new TransferContext { StatisticsRateSeconds = .5 };
+TransferContext context = new TransferContext { StatisticsRateSeconds = 2.0 };
 ```
 You can set a number of options on the context object for subscribing to events:
 
@@ -171,7 +183,8 @@ context.TransferJobRetry += (sender, args) =>
 
 context.TransferStatistics += (sender, args) =>
 {
-    Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps");
+    // Disabling since the GlobalSettings are already configured to write the transfer statistics to the console.
+    // Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps");
 };
 ```
 
@@ -197,9 +210,18 @@ int workspaceId = 1027428;
 TAPI supports basic authentication and OAuth2. For more information about Relativity OAuth2 clients, see {Relativity Documentation Site]("https://help.relativity.com/9.5/Content/Relativity/Authentication/OAuth2_clients.htm"). 
 
 ### Creating a client
-We then create a transfer client using the `CreateClientAsync()` method. Note the `using` statement with `CreateClientAsync()` (as well as other asynchronous TAPI operations that implement `IDisposable`):
+We then create a transfer client using the `CreateClientAsync()` method and supply a custom `ClientConfiguration` to the transfer. Note the `using` statement with `CreateClientAsync()` (as well as other asynchronous TAPI operations that implement `IDisposable`):
 
 ```csharp
+// The configuration object provides numerous options to customize the transfer.
+ClientConfiguration configuration =
+    new ClientConfiguration
+        {
+            PreCalculateJobSize = false,
+            FileNotFoundErrorsRetry = false,
+            PreserveDates = true
+        };
+
 // The CreateClientAsync method chooses the best client at runtime.  
 using (IRelativityTransferHost host = new RelativityTransferHost(new RelativityConnectionInfo(relativityHost, credential, workspaceId)))
 using (ITransferClient client = await host.CreateClientAsync(cancellationTokenSource.Token))
@@ -228,6 +250,19 @@ We then create a transfer job. After that, we add file paths to the asynchronous
 // Once the job is created, an asynchronous queue is available to add paths and perform immediate transfers.
 using (var job = await client.CreateJobAsync(uploadRequest, cancellationTokenSource.Token))
 {
+    // Setup the upload request using 1 of 2 approaches.
+    // 1. Use the SearchLocalPathsAsync API.
+    // 2. Specify the precise files.
+
+    //// TODO: Update with a search path.
+    //const bool PreserveFolders = true;
+    //var searchResults = await client.SearchLocalPathsAsync(
+    //                        @"C:\Datasets\transfer-api-sample",
+    //                        PreserveFolders,
+    //                        targetPath,
+    //                        cancellationTokenSource.Token);
+    //job.AddPaths(searchResults.Paths);
+
     // TODO: Update this collection with valid source paths to upload.
     job.AddPaths(
     new[]

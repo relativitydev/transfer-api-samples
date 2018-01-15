@@ -40,7 +40,7 @@ namespace Relativity.Transfer
                 GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 100;
 
                 // All temp files can be stored in a specific directory or UNC share.
-                //// GlobalSettings.Instance.TempDirectory = @"C:\MyTemp";
+                GlobalSettings.Instance.TempDirectory = System.IO.Path.Combine(Environment.CurrentDirectory, "Transfer-Logs");
 
                 // If a transfer log isn't specified, Relativity Logging is always used. You can optionally construct the transfer log and pass the ILog instance too.
                 //// using (ITransferLog transferLog = new RelativityTransferLog(logInstance))
@@ -70,7 +70,7 @@ namespace Relativity.Transfer
         private static async void ExecuteUploadDemo(ITransferLog transferLog)
         {
             // The context object is used to decouple operations such as progress from other TAPI objects.
-            TransferContext context = new TransferContext { StatisticsRateSeconds = .5 };
+            TransferContext context = new TransferContext { StatisticsRateSeconds = 2.0 };
             context.TransferPathIssue += (sender, args) =>
                 {
                     Console.WriteLine($"*** The transfer error has occurred. Attributes={args.Issue.Attributes}");
@@ -85,7 +85,7 @@ namespace Relativity.Transfer
                 {
                     if (args.Status == TransferPathStatus.Successful)
                     {
-                        //// Console.WriteLine($"*** The source file '{args.Path.SourcePath}' transfer is successful.");
+                        Console.WriteLine($"*** The source file '{args.Path.SourcePath}' transfer is successful.");
                     }
                 };
 
@@ -96,7 +96,8 @@ namespace Relativity.Transfer
 
             context.TransferStatistics += (sender, args) =>
                 {
-                    //// Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps, Remaining: {args.Statistics.RemainingTime:hh\\:mm\\:ss}");
+                    // Disabling since the GlobalSettings are already configured to write the transfer statistics to the console.
+                    // Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps, Remaining: {args.Statistics.RemainingTime:hh\\:mm\\:ss}");
                 };
 
             // The CancellationTokenSource is used to cancel the transfer operation.
@@ -109,7 +110,7 @@ namespace Relativity.Transfer
             int workspaceId = 1027428;
 
             // The configuration object provides numerous options to customize the transfer.
-            var configuration =
+            ClientConfiguration configuration =
                 new ClientConfiguration
                     {
                         PreCalculateJobSize = false,
@@ -126,7 +127,7 @@ namespace Relativity.Transfer
 
                 // Retrieve workspace details in order to specify a UNC path.
                 var workspace = await client.GetWorkspaceAsync(cancellationTokenSource.Token);
-                var targetPath = Path.Combine(workspace.DefaultFileShareUncPath + @"FTA\TAPI\Tests\UploadDemo2");
+                var targetPath = Path.Combine(workspace.DefaultFileShareUncPath + @"\UploadDataset");
                 TransferRequest uploadRequest = TransferRequest.ForUploadJob(targetPath, context);
 
                 // When using the Aspera client, UNIX-based relative paths are required. To support UNC paths, an Aspera specific path resolver must be specified.
