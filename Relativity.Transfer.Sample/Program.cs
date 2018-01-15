@@ -30,9 +30,17 @@ namespace Relativity.Transfer
             try
             {
                 // Setup global settings for all transfers.
-                GlobalSettings.Instance.ApplicationName = "Sample App";
+                GlobalSettings.Instance.ApplicationName = "sample-app";
+
+                // Don't be too aggressive with logging statistics.
                 GlobalSettings.Instance.StatisticsLogEnabled = true;
-                GlobalSettings.Instance.StatisticsLogIntervalSeconds = 1;
+                GlobalSettings.Instance.StatisticsLogIntervalSeconds = 2;
+
+                // Any attempt to exceed this max will throw an exception.
+                GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 100;
+
+                // All temp files can be stored in a specific directory or UNC share.
+                //// GlobalSettings.Instance.TempDirectory = @"C:\MyTemp";
 
                 // If a transfer log isn't specified, Relativity Logging is always used. You can optionally construct the transfer log and pass the ILog instance too.
                 //// using (ITransferLog transferLog = new RelativityTransferLog(logInstance))
@@ -77,7 +85,7 @@ namespace Relativity.Transfer
                 {
                     if (args.Status == TransferPathStatus.Successful)
                     {
-                        Console.WriteLine($"*** The source file '{args.Path.SourcePath}' transfer is successful.");
+                        //// Console.WriteLine($"*** The source file '{args.Path.SourcePath}' transfer is successful.");
                     }
                 };
 
@@ -88,7 +96,7 @@ namespace Relativity.Transfer
 
             context.TransferStatistics += (sender, args) =>
                 {
-                    Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps");
+                    //// Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps, Remaining: {args.Statistics.RemainingTime:hh\\:mm\\:ss}");
                 };
 
             // The CancellationTokenSource is used to cancel the transfer operation.
@@ -99,24 +107,56 @@ namespace Relativity.Transfer
             Uri relativityHost = new Uri("https://relativity_host.com/Relativity");
             IHttpCredential credential = new BasicAuthenticationCredential("jsmith@example.com", "UnbreakableP@ssword777");
             int workspaceId = 1027428;
-            
+
+            // The configuration object provides numerous options to customize the transfer.
+            var configuration =
+                new ClientConfiguration
+                    {
+                        PreCalculateJobSize = false,
+                        FileNotFoundErrorsRetry = false,
+                        PreserveDates = true
+                    };
+
             // The CreateClientAsync method chooses the best client at runtime.
             using (IRelativityTransferHost host = new RelativityTransferHost(new RelativityConnectionInfo(relativityHost, credential, workspaceId), transferLog))
-            using (ITransferClient client = await host.CreateClientAsync(cancellationTokenSource.Token))
+            using (ITransferClient client = await host.CreateClientAsync(configuration, cancellationTokenSource.Token))
             {
                 // Display a friendly name for the client that was just created.
                 Console.WriteLine($"Client {client.DisplayName} has been created.");
 
                 // Retrieve workspace details in order to specify a UNC path.
                 var workspace = await client.GetWorkspaceAsync(cancellationTokenSource.Token);
-                var targetPath = Path.Combine(workspace.DefaultFileShareUncPath + @"\UploadDataset");
+                var targetPath = Path.Combine(workspace.DefaultFileShareUncPath + @"FTA\TAPI\Tests\UploadDemo2");
                 TransferRequest uploadRequest = TransferRequest.ForUploadJob(targetPath, context);
+
+                // When using the Aspera client, UNIX-based relative paths are required. To support UNC paths, an Aspera specific path resolver must be specified.
+                if (client.Client == WellKnownTransferClient.Aspera)
+                {
+                    // The target path resolver is required when uploading.
+                    uploadRequest.TargetPathResolver = new Relativity.Transfer.Aspera.AsperaUncPathResolver(workspace.DefaultFileShareUncPath, 1);
+
+                    // The source path resolver is required when downloading.
+                    //// downloadRequest.SourcePathResolver = new Relativity.Transfer.Aspera.AsperaUncPathResolver(workspace.DefaultFileShareUncPath, 1);
+                }
 
                 // Once the job is created, an asynchronous queue is available to add paths and perform immediate transfers.
                 using (var job = await client.CreateJobAsync(uploadRequest, cancellationTokenSource.Token))
                 {
-                    // TODO: Update this collection with valid source paths to upload.
-                    job.AddPaths(new[] { new TransferPath {SourcePath = @"C:\Datasets\transfer-api-sample\sample.pdf"} });
+                    // Setup the upload request using 1 of 2 approaches.
+                    // 1. Use the SearchLocalPathsAsync API.
+                    // 2. Specify the precise files.
+
+                    //// TODO: Update with a search path.
+                    //const bool PreserveFolders = true;
+                    //var searchResults = await client.SearchLocalPathsAsync(
+                    //                        @"C:\Datasets\transfer-api-sample",
+                    //                        PreserveFolders,
+                    //                        targetPath,
+                    //                        cancellationTokenSource.Token);
+                    //job.AddPaths(searchResults.Paths);
+
+                    // TODO: Update the array with valid source paths to upload.
+                    job.AddPaths(new[] { new TransferPath { SourcePath = @"C:\Datasets\transfer-api-sample\sample.pdf" } });
 
                     //// Some clients support the ability to change the data rate at runtime.
                     //if (job.IsDataRateChangeSupported)

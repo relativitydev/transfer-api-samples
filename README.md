@@ -11,19 +11,38 @@ TAPI features include:
 * Progress using context object
 * Diagnostics (for example, compatibility check)
 * Relativity user authentication
+* Built-in RCC package/transfer support
 * Logging with the Relativity logging framework and [Serilog](https://serilog.net/)
 
 We are  providing a sample solution to help you get started developing your own transfer applications.
 
+## Integrations
+As of this writing, TAPI is now integrated within the following components and applications:
+
+* RDC/WinEDDS/IAPI/RIP/Invariant
+* EnForce (Guidance/OpenText)
+* Relativity One Staging Explorer (ROSE)
+* R1 Import via Azure Functions
+
 ## Target Framework
 * .NET 4.6.2
 
-## Dependencies
-The following libraries must be referenced by a project in order to use TAPI:
 
+## Dependencies
+The following NuGet packages are required by the TAPI solution:
+
+* aspera.faspnative (native Aspera engine)
+* dtx.rcc.client32.win (32-bit RCC API)
+* dtx.rcc.client64.win (64-bit RCC API)
+* Newtonsoft.Json
 * Polly
 * ssh.net
-* Newtonsoft.Json
+* relativity.faspmanager (Aspera API)
+* Relativity.Logging
+* Relativity.Logging.Interfaces
+
+***Note:** The RCC packages are only required when using the RCC package library API's.**
+
 
 To obtain TAPI libraries, contact [Relativity support](mailto:support@relativity.com).
 
@@ -37,7 +56,7 @@ The Transfer API consists of the following key components:
 * **Relativity.Transfer.TransferPath** - the path that details the source, target, and optional filename properties.
 
 ## Supported transfer clients
-The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to construct clients. Relativity supports the following clients:
+The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
 
 * Aspera
 * File Share
@@ -69,8 +88,7 @@ try
     // Using a custom transfer log to send all entries to Serilog.    
     using (ITransferLog transferLog = new CustomTransferLog())    
     {        
-        ExecuteUploadDemo(transferLog);    
-    }
+        ExecuteUploadDemo(transferLog);
     }
     catch (Exception e)
     {    
@@ -125,7 +143,7 @@ public static void Main(string[] args)
 // The context object is used to decouple operations such as progress from other TAPI objects.
 TransferContext context = new TransferContext { StatisticsRateSeconds = .5 };
 ```
-You can set a number of options on the context object to for subscribing to events:
+You can set a number of options on the context object for subscribing to events:
 
 ```csharp
 context.TransferPathIssue += (sender, args) =>
@@ -160,7 +178,7 @@ context.TransferStatistics += (sender, args) =>
 For more information, see [TransferContext](#transfercontext).
 
 ### Cancellation
-We then create the cancellation token. The use of cancellation token logic is strongly recommended with potentailly long-running transfer operations:
+We then create the cancellation token. The use of cancellation token logic is strongly recommended with potentially long-running transfer operations:
 
 ```csharp
 // The CancellationTokenSource is used to cancel the transfer operation.
@@ -246,13 +264,15 @@ The next sections cover TAPI usage including:
 * [IRetryStrategy](#iretrystrategy)
 * [TransferPath](#transferpath)
 * [TransferRequest](#transferrequest)
-* [TransferResult](#transferresult)
+* [ITransferResult](#itransferresult)
 * [TransferStatus](#transferstatus)
 * [ITransferJob](#itransferjob)
 * [Transfer via Request](#transfer-via-request)
 * [Transfer via Job](#transfer-via-job)
+* [Change Job Data Rate](#change-job-data-rate)
 * [Transfer Events and Statistics](#transfer-events-and-statistics)
 * [Error Handling and ITransferIssue](#error-handling-and-itransferissue)
+* [Packaging and RCC Package Library](#packaging-and-rcc-package-library)
 * [Global Settings](#global-settings)
 * [Logging](#logging)
 * [DateTime object values](#datetime-object-values)
@@ -276,6 +296,15 @@ var connectionInfo = new RelativityConnectionInfo(
     new BasicAuthenticationCredential("relativity.admin@relativity.com", "MyUbreakablePassword777!"),
     WorkspaceId);
 ```
+When using an OAUTH2 client to authenticate, the bearer token is provided instead.
+
+```csharp
+const int WorkspaceId = 111111;
+var connectionInfo = new RelativityConnectionInfo(
+    new Uri("http://localhost/Relativity"),
+    new BearerTokenCredential(bearerToken),
+    WorkspaceId);
+```
 
 ### RelativityTransferHost
 Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block.
@@ -290,20 +319,27 @@ using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo)
 ### ClientConfiguration
 Before you can create a client, you have to provide a `ClientConfiguration` instance. If you know which client you would like to construct, choose strongly-typed class object that derives from `ClientConfiguration`. As you might expect, there are a number client specific properties to control the client transfer behavior:
 
-| Property                   | Description |
-| ---------------------------| -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ClientId                   | The transfer client unique identifier. |
-| Client                     | The well-known transfer client. |
-| CookieContainer            | The HTTP cookie container. |
-| FileSystemChunkSize        | The size of chunks, in bytes, when transferring files over file-system transports. |
-| HttpChunkSize              | The size of chunks, in bytes, when transferring files over HTTP transports. |
-| MaxHttpRetryAttempts       | The maximum number of retry attempts retry attempts for a HTTP service call. |
-| MaxJobParallelism          | The maximum degree of parallelism when executing a job. This value specifies the number of threads used to transfer the paths contained within the job queue. |
-| MaxJobRetryAttempts        | The maximum number of job retry attempts. |
-| PreCalculateJobSize        | The value indicating whether the overall job size is pre-calculated to use more accurate byte-level progress and statistics. Care should be taken when using this setting on massive datasets. |
-| PreserveDates              | The value indicating whether file dates ( metadata) are preserved. |
-| TimeoutSeconds             | The timeout. This value is typically used whenever executing a web-service. |
-| ValidateSourcePaths        | The value indicating whether to validate source paths before they're added to the job queue. An `ArgumentException` is thrown when a validation failure occurs. |
+| Property                   | Description                                                                                                                                                                                                  | Default Value                      |
+| ---------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
+| ClientId                   | The transfer client unique identifier.                                                                                                                                                                       | Guid.Empty                         |
+| Client                     | The well-known transfer client.                                                                                                                                                                              | WellKnownTransferClient.Unassigned |
+| CookieContainer            | The HTTP cookie container.                                                                                                                                                                                   | new instance                       |
+| FileNotFoundErrorsDisabled | The value indicating whether to disable treating missing files as errors.                                                                                                                                    | false                              |
+| FileNotFoundErrorsRetry    | The value indicating whether to retry missing file errors..                                                                                                                                                  | true                               |
+| FileSystemChunkSize        | The size of chunks, in bytes, when transferring files over file-system transports.                                                                                                                           | 16KB                               |
+| HttpChunkSize              | The size of chunks, in bytes, when transferring files over HTTP transports.                                                                                                                                  | 1MB                                |
+| MaxHttpRetryAttempts       | The maximum number of retry attempts for a HTTP service call.                                                                                                                                                | 5                                  |
+| MaxJobParallelism          | The maximum degree of parallelism when executing a job. This value specifies the number of threads used to transfer the paths contained within the job queue.                                                | 1                                  |
+| MaxJobRetryAttempts        | The maximum number of job retry attempts.                                                                                                                                                                    | 3                                  |
+| MinDataRateMbpsKey         | The minimum data rate in Mbps units. This setting isn't guaranteed to be used by all clients but considered a hint to clients that support targeted data rates.                                              | 0                                  |
+| PreCalculateJobSize        | The value indicating whether the overall job size is pre-calculated to use more accurate byte-level progress and statistics. Care should be taken when using this setting on massive datasets.               | false                              |
+| PreserveDates              | The value indicating whether file dates (metadata) are preserved.                                                                                                                                            | true                               |
+| TargetDataRateMbps         | The target data rate in Mbps units. This setting isn't guaranteed to be used by all clients but considered a hint to clients that support targeted data rates.                                               | 100 Mbps                           |
+| TimeoutSeconds             | The timeout. This value is typically used whenever executing a web-service.                                                                                                                                  | 300 seconds                        |
+| TransferLogDirectory       | The directory where clients can store transfer logs. This setting isn't guaranteed to be used by all clients but provided if specialized transfer log files are available, independent of Relativity Logging.| null                               |
+| ValidateSourcePaths        | The value indicating whether to validate source paths before they're added to the job queue. An `ArgumentException` is thrown when a validation failure occurs.                                            | true                               |
+
+***Note:** API users are strongly encouraged to set the `TransferLogDirectory` because clients that support this feature typically write more detailed diagnostic information into their custom log files.*
 
 
 ### ITransferClient
@@ -421,6 +457,9 @@ interface IRemotePathResolver
 
 The primary use-case for path resolvers is adding backwards compatibility to a client. For example, the Aspera client employs resolvers to adapt UNC paths to native Aspera UNIX-style paths.
 
+***Note:** The library provides **AsperaUncPathResolver** for API users that wish to use Aspera clients when using UNC paths exclusively. This **must** be specified when native Aspera paths are **NOT** used.*
+
+
 ### IRetryStrategy
 The `TransferRequest` object exposes an optional `RetryStrategy` property to define a method that dictates how much time is spent in between retry attempts. The signature for this interface is as follows:
 
@@ -451,6 +490,7 @@ This object encapsulates a local or remote path and can be found throughout the 
 
 ***Note:*** Both relative paths and paths transformed via `IRemotePathResolver` are automatically assigned to the `TransferPath` object.
 
+
 ### TransferRequest
 There are several options to submit transfers and all revolve around the `TransferRequest` object.
 
@@ -460,12 +500,13 @@ There are several options to submit transfers and all revolve around the `Transf
 | Context            | The **optional** transfer context to configure progress events and logging. |
 | Direction          | The **optional** transfer direction (Upload or Download). This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
 | JobId              | The **optional** unique identifier for the current submission or job. If not specified, a value is automatically assigned. |
+| Name               | The **optional** name associated with this request. For Aspera transfers, this value is attached to all reporting data and useful for identification and search purposes. |
+| Paths              | The transfer path objects. This is ignored when using a transfer job. |
 | RetryStrategy      | The **optional** IRetryStrategy instance to define the amount of time to wait in between each retry attempt. By default, an exponential backoff strategy is assigned. |
 | SourcePathResolver | The **optional** resolver used to adapt source paths from one format to another. This is set to `NullPathResolver` by default. |
-| TargetPathResolver | The **optional** resolver used to adapt target paths from one format to another. This is set to `NullPathResolver` by default. |
-| Paths              | The transfer path objects. This is ignored when using a transfer job. |
 | Tag                | The **optional** object allows storing any custom object on the transfer request. |
 | TargetPath         | The transfer target path. This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
+| TargetPathResolver | The **optional** resolver used to adapt target paths from one format to another. This is set to `NullPathResolver` by default. |
 
 
 Although this object can be constructed directly, a number of static methods have been added to simplify construction using several overloads including:
@@ -476,8 +517,8 @@ Although this object can be constructed directly, a number of static methods hav
 * TransferRequest.ForUploadJob
 
 
-### TransferResult
-Once the transfer is complete, the `TransferResult` object is returned and provides an overall summary.
+### ITransferResult
+Once the transfer is complete, the `ITransferResult` object is returned and provides an overall summary.
 
 | Property              | Description |
 | --------------------- |------------------------------------------------------------- |
@@ -487,12 +528,16 @@ Once the transfer is complete, the `TransferResult` object is returned and provi
 | Request               | The request associated with the transfer result. |
 | RetryCount            | The total number of job retry attempts. |
 | StartTime             | The **local** transfer start time. |
+| Statistics            | The read-only list of all statistics for the initial request and all subsequent retry attempts. |
 | Status                | The transfer status. |
 | TotalFailedFiles      | The total number of files that failed to transfer. |
+| TotalFatalErrors      | The total number of fatal errors reported. |
+| TotalFilesNotFound    | The total number of files not found. |
+| TotalSkippedFiles     | The total number of files skipped. |
 | TotalTransferredBytes | The total number of transferred bytes. |
 | TotalTransferredFiles | The total number of transferred files. |
 | TransferError         | The most important error from the list of registered issues. |
-| TransferRateMbps      | The average file transfer rate in Mbps units. |
+| TransferRateMbps      | The average file transfer rate, in Mbps units, for the entire request. |
 
 
 ### TransferStatus
@@ -562,17 +607,39 @@ using (ITransferJob job = await client.CreateJobAsync(request))
 ***Note:** Multiple jobs can be created; however, bandwidth constraints can lead to transfer errors.*
 
 
+### Change Job Data Rate (Aspera-Only)
+The `ClientConfiguration` object supports setting a minimum and target data rate. There are situations where the API user would like to *change* the data rate at runtime. To facilitate this feature, the `ITransferJob` object allows each TAPI client to provide an implementation.
+
+This feature is currently limited to the **Aspera client** and any attempt to call this method on a job/client that doesn't support setting or changing the data rate will throw `NotSupportedException`. To provide the API user a cleaner way to use this feature, the `IsDataRateChangedSupported` property is provided.
+
+```csharp
+using (ITransferJob job = await client.CreateJobAsync(request))
+{
+    if (job.IsDataRateChangeSupported)
+    {
+        job.ChangeDataRate(0, 200);
+        Console.WriteLine($"Changed the data rate. Min=0 Mbps, Target=200 Mbps.");
+    }
+}
+```
+
+
 ### Transfer events and statistics
 All transfer events are exposed through the optional `TransferContext` object and include:
 
-| Event                | Description |
-| -------------------- |----------------------------------------------------------------------------------- |
-| LargeFileProgress    | Occurs when a single large file progress has changed. |
-| TransferPathProgress | Occurs when the transfer path progress changed. |
-| TransferPathIssue    | Occurs when an issue occurs transferring a path. |
-| TransferJobRetry     | Occurs when a transfer job is retried. |
-| TransferRequest      | Occurs when the overall transfer request is started or ended. |
-| TransferStatistics   | Occurs to provide overall progress, transfer rate, and total byte/file count info. |
+| Property                 | Description |
+| ------------------------ |----------------------------------------------------------------------------------- |
+| EndTime                  | The **local** end time of the transfer operation. |
+| LargeFileProgress        | Occurs when a single large file progress has changed. |
+| LargeFileProgressEnabled | The value indicating whether `LargeFileProgress` events are raised. This value is disabled by default. |
+| StartTime                | The **local** start time of the transfer operation. |
+| StatisticsEnabled        | The value indicating whether `TransferStatistics` events are raised. This value is enabled by default. |
+| StatisticsRateSeconds    | The rate, in seconds, that statistics events are raised. This value is 2 seconds by default. |
+| TransferPathProgress     | Occurs when the transfer path progress changed. |
+| TransferPathIssue        | Occurs when an issue occurs transferring a path. |
+| TransferJobRetry         | Occurs when a transfer job is retried. |
+| TransferRequest          | Occurs when the overall transfer request is started or ended. |
+| TransferStatistics       | Occurs to provide overall progress, transfer rate, and total byte/file count info. |
 
 ***Note:*** *The `ITransferRequest` object can take an optional `TransferContext` instance when event handling is required.*
 
@@ -591,25 +658,38 @@ TransferRequest request = TransferRequest.ForUpload(SourcePath, TargetPath, cont
 
 The `TransferStatistics` event is notable because it provides a wealth of useful runtime transfer info. The `TransferStatisticsEventArgs` class exposes an `ITransferStatistics` object and provides the following properties.
 
-| Property              | Description |
-| --------------------- |-------------------------------------------------------- |
-| EndTime               | The **local** end time of the current job. |
-| Progress              | The current progress value (0-100). |
-| RetryAttempt          | The current job retry attempt number. |
-| StartTime             | The **local** start time of the current job. |
-| TotalFailedFiles      | The total number of files that failed to transfer. |
-| TotalFatalErrors      | The total number of fatal errors reported for the current job. |
-| TotalRequestBytes     | The total number of bytes contained within the request. |
-| TotalRequestFiles     | The total number of files contained within the request. |
-| TotalTransferredBytes | The total number of bytes transferred at this moment in time. |
-| TotalTransferredFiles | The total number of transferred files at this moment in time. |
-| TransferRateMbps      | The average transfer rate in Mbps units. |
-| TransferTimeSeconds   | The total transfer time in seconds. |
+| Property                | Description |
+| ---------------------   |-------------------------------------------------------- |
+| AverageTransferRateMbps | The average transfer rate, in Mbps units, for the current job. |
+| EndTime                 | The **local** end time of the current job. |
+| Id                      | The auto-generated unique identifier for this instance. |
+| JobError                | The value indicating whether a job-level error has occurred. |
+| JobErrorCode            | The client-specific job error code. |
+| JobErrorMessage         | The client-specific job error message. |
+| Order                   | The zero-based order in which the statistics were created. This value is incremented with each retry. |
+| PreCalcEndTime          | The **local** time when the pre-calculation ended. |
+| PreCalcStartTime        | The **local** time when the pre-calculation started. |
+| Progress                | The progress for the entire request, regardless of retry. Byte-level progress is used when the `ClientConfiguration.PreCalculateJobSize` or `ITransferPathService` is used to determine the complete inventory of files; otherwise, file-level progress is used. The range is between 0-100. |
+| RemainingTime           | The estimated remaining transfer time. The TotalRequestBytes must be calculated via `ClientConfiguration.PreCalculateJobSize` or `ITransferClient.SearchLocalPathsAsync` to calculate and return a valid value. |
+| Request                 | The request associated with this statistics instance. |
+| RetryAttempt            | The current job retry attempt number. |
+| StartTime               | The **local** start time of the current job. |
+| TotalFailedFiles        | The total number of files that failed to transfer. |
+| TotalFilesNotFound      | The total number of files not found for the current job. |
+| TotalFatalErrors        | The total number of fatal errors reported for the current job. |
+| TotalRequestBytes       | The total number of bytes contained within the request. |
+| TotalRequestFiles       | The total number of files contained within the request. |
+| TotalSkippedFiles       | The total number of skipped files for the current job. |
+| TotalTransferredBytes   | The total number of bytes transferred at this moment in time. |
+| TotalTransferredFiles   | The total number of transferred files at this moment in time. |
+| TransferRateMbps        | The active transfer rate, in Mbps units, for the current job. |
+| TransferTimeSeconds     | The total transfer time in seconds. |
 
 ***Notes:*** 
 
 * *Not all transfer clients are guaranteed to supply all listed statistics.*
 * *The rate at which statistics are raised is defined via StatisticsRateSeconds property defined on TransferContext.*
+
 
 ### Error handling and ITransferIssue
 If a fatal exception occurs, such as `OutOfMemoryException`, `ThreadAbortException`, or a general connection exception, **the rule is simple: TAPI throws `TransferException`**. This must be handled by the API user.
@@ -628,7 +708,6 @@ The ITransferIssue object includes the following properties:
 | Path             | The `TransferPath` object associated with the issue. This value can be null if the failure is unrelated to transferring a specific file. |
 | RetryAttempt     | The current job retry attempt number. |
 | Timestamp        | The **local** time when the issue occurred. |
-
 
 The `IssueAttributes` enumeration provides common issues that can be combined (for example, `FlagsAttribute`) and occur across any transfer client.
 
@@ -672,21 +751,143 @@ foreach (ITransferIssue issue in result.Issues)
 }
 ```
 
-### Global Settings
-A small number of common settings are exposed by the `GlobalSettings` static class. All of these properties are considered optional.
 
-| Property                     | Description |
-| ---------------------------- |--------------------------------------------------------------------------------------------------------------------------------------- |
-| ApplicationName              | The name of the application. This value is prefixed within all log entries. Default = `TAPI` |
-| LogPackageSourceFiles        | Specifies whether to log all source files added to the package. If true, the overhead can degrade package performance. Default = `false` |
-| MaxAllowedTargetDataRateMbps | The max target data rate, in Mbps units, allowed by the transfer API. Default = `600` |
-| PluginDirectory              | The directory where all plugins are located. Default = `Working directory` |
-| PluginFileNameFilter         | The file name filter to limit which files are searched for plugins. Default = `Relativity.Transfer` |
-| PluginFileNameMatch          | The file name match expression to limit which files are searched for plugins. Default = `Relativity.Transfer` |
-| PluginSearchOption           | Tthe file search option used when searching for plugins. Default = `SearchOption.TopDirectoryOnly` |
-| StatisticsLogEnabled         | Automatically log transfer statistics. Default = `false` |
-| StatisticsLogIntervalSeconds | The interval, in seconds, that transer statistics are logged. Default = `2.0` |
-| TempDirectory                | The directory used for temp storage. Default = 'Current user's temporary folder` |
+### Packaging and RCC Package Library
+There may be scenarios where the cost of transferring massive datasets consisting of small files is significantly higher than packaging them locally, transferring, and potentially extracting them on the server (extracting may not be necessary, depending on workflow). There may also be scenarios where the API user would like to alter file metadata, such as filename or file timestamps, before adding the native files to the package container.
+
+TAPI extends the existing plugin-based design with a simple means to create or use package libraries through a familiar and consistent object model. Some of the key features include:
+* MEF-based plugin design.
+* Package dependencies are *only* required if packaging is used.
+* Package files are transferred *as soon as* each package file is completed.
+* Package events are exposed through a new package context object.
+* **Limited to uploads only.**
+
+
+#### RCC Package Library NuGet Packages
+The TAPI repository includes two NuGet packages to provide RCC package library functionality:
+* relativity.transfer.package.rcc32 (32-bit package library)
+* relativity.transfer.package.rcc64 (64-bit package library)
+
+
+#### Package configuration
+Similar to the `ClientConfiguration` object, the `PackageConfiguration` object is used to setup the package request and includes:
+
+| Name                 | Description |
+| -------------------- |----------------------------------------------------------------------------------- |
+| Compression          | Specify whether to compress the files. |
+| DeletePackageFiles   | Specify whether to delete the package files after they've been transferred. |
+| FileName             | The package file name. |
+| MultiFileMaxBytes    | The maximum number of bytes per package file (IE think of multi-file ZIP). |
+| Name                 | The package name. The RCC library uses this value to specify the `DataSource` value. |
+| PackageLibrary       | The WellKnownPackageLibrary enumeration value. This specifies which package library to use. |
+| PackageLibraryId     | The package library unique identifier. This must be assigned when using a third-party package library. |
+| Password             | The package password. |
+
+
+#### Package events
+Similar to the `TransferContext` object, all package events are exposed through the optional `PackageContext` object and includes:
+
+| Event                | Description |
+| -------------------- |----------------------------------------------------------------------------------- |
+| PackagingFile        | Occurs when a source file is ready to be added to a package. This event should be handled if the source file metadata must be changed. |
+| PackageProgress      | Occurs when the package progress changes. |
+| PackageCreated       | Occurs when a new transfer package is created. |
+
+
+#### RCC Format Info
+For those that may not be familiar with the RCC format, this was developed in the summer of 2015 to secure custodian-based collections. In a nutshell, it's similar to multi-file ZIP but offers a number of advantages including:
+* The format is based on the SQLCipher port of SQLite.
+* Cross platform support (Windows and OSX).
+* Dependent on 32-bit and 64-bit **native** libraries.
+* **The executing application MUST assign the x86/x64 platform target (IE project settings)**
+* Full database AES-256 encryption in CBC mode via OpenSSL.
+* You **MUST** specify a 16-character password.
+* Custom metadata can be stored within the package.
+* Extraction is done through a WPF-based application or RCC extraction API.
+* Compression not yet supported.
+
+
+#### RCC File Types
+A standard RCC is composed of three file types where each file type is uniquely identified. The SQLCipher database format provides a feature where the first 16 Bytes can be specified.
+
+| RCC File Type             | Description                                                                                                                                                                    |
+| --------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| \{filename\}.rcc          | The master RCC database contains metadata and other lookup tables.                                                                                                             |
+| \{filename\}-cf.rcc       | The collected file database contains file and item metadata.                                                                                                                   |
+| \{filename\}-cf-xxxx.rcc  | The BLOB database contains the raw collected files. A filename scheme includes numbers to support multi-files once the configured maximum file length is exceeded.             |
+
+
+#### Package Example
+There are very few differences between a standard transfer request and one involving packaging. Ignoring package configuration and events, the main difference is calling `PackageTransferAsync` instead of `TransferAsync`.
+
+```csharp
+var packageConfiguration = new PackageConfiguration
+    {
+        Compression = false,
+        DeletePackageFiles = true,
+        FileName = "Sample.rcc",
+        Name = "Sample Dataset",
+        PackageLibrary = WellKnownPackageLibrary.Rcc,
+        Password = "P@ssw0rd@1012345"
+    };
+
+    // Custom metadata can be added to the package.
+    var packageMetadata = new Dictionary<string, object>();
+
+    // The package context exposes events, similar to how the context is used throughout TAPI.
+    var context = new PackageContext(packageConfiguration, packageMetadata);
+
+    // This event is raised when a new package is created.
+    context.PackageCreated += (sender, e) =>
+        {
+            Console.WriteLine($"Package {e.File} has been created.");
+        };
+
+    // This event is raised when package progress occurs.
+    context.PackageProgress += (sender, e) =>
+        {
+            Console.WriteLine("Package progress: {0:#.##}%", e.Progress);
+        };
+
+    // This event is raised as package files are about to be get added to the package.
+    context.PackagingFile += (sender, e) =>
+        {
+            e.SourceFileMetadata.CreationTime = DateTime.Today;
+            e.SourceFileMetadata.LastAccessTime = DateTime.Today.Subtract(TimeSpan.FromDays(1));
+            e.SourceFileMetadata.LastWriteTime = DateTime.Today.Subtract(TimeSpan.FromDays(2));
+            e.SourceFileMetadata.FileName = "modified-" + e.SourceFileMetadata.FileName;
+            e.SourceFileMetadata.ExtractDirectory = null;
+            Console.WriteLine($"Adding source file '{e.SourceFileMetadata.File}' to package.");
+        };
+
+    // Simultaneously package the request and transfer all package files.
+    var request = TransferRequest.ForUpload(
+        new TransferPath { SourcePath = @"C:\MyDataset" },
+        @"\\files\PackageUpload");
+    var result = await client.PackageTransferAsync(request, context);
+```
+
+
+### Global Settings
+A number of common but optional settings are exposed by the `GlobalSettings` singleton.
+
+| Property                     | Description                                                                                                            | Default Value                  |
+| -----------------------------|------------------------------------------------------------------------------------------------------------------------|--------------------------------|
+| ApplicationName              | The name of the application. This value is prefixed within all log entries.                                            | TAPI                           |
+| LogPackageSourceFiles        | Specifies whether to log all source files added to the package. If true, the overhead can degrade package performance. | false                          |
+| MaxAllowedTargetDataRateMbps | The max target data rate, in Mbps units, allowed by the transfer API.                                                  | 600                            |
+| PluginDirectory              | The directory where all plugins are located.                                                                           | Working directory              |
+| PluginFileNameFilter         | The file name filter to limit which files are searched for plugins.                                                    | *.dll                          |
+| PluginFileNameMatch          | The file name match expression to limit which files are searched for plugins.                                          | Relativity.Transfer            |
+| PluginSearchOption           | The file search option used when searching for plugins.                                                                | SearchOption.TopDirectoryOnly  |
+| PrecalcCheckIntervalSeconds  | The number of seconds the pre-calculation values are checked to determine whether the value has changed.               | 1.0                            |
+| StatisticsLogEnabled         | Automatically log transfer statistics.                                                                                 | false                          |
+| StatisticsLogIntervalSeconds | The interval, in seconds, that transer statistics are logged.                                                          | 2.0                            |
+| StatisticsMaxSamples         | The maximum number of statistics transfer rate samples to add additional weight to the remaining time calculation.     | 8                              |
+| TempDirectory                | The directory used for temp storage.                                                                                   | Current user profile temp path |
+
+***Note:** API users are strongly encouraged to set `ApplicationName` because the value is included within all log entries.*
+
 
 ### Logging
 TAPI supports Relativity Logging and, specifically, the `ILog` object. There may be scenarios, however, where 3rd party developers may wish to use their own logging framework. The `ITransferLog` interface is an extensibility point to address this possible use-case. Similar to other TAPI objects, this interface implements `IDisposable` to manage object lifecycles.
@@ -705,6 +906,7 @@ using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo,
 * *If an ITransferLog object isn't provided, `Relativity.Logging.Log.Logger` is used to retrieve the current Relativity Logging instance.*
 * *If a serious error occurs attempting to retrieve the `ILog` or an exception is thrown performing Relativity Logging setup, the `NullTransferLog` is constructed to avoid unnecessary fatal errors.*
 
+
 #### Log Formatting
 When a transfer request is made, all log entries are prefixed with useful property values to improve log searching and filtering to a particular request. This includes the following values:
 
@@ -714,11 +916,14 @@ When a transfer request is made, all log entries are prefixed with useful proper
 
 ***Note:** The `ApplicationName` should be set to an appropriate value. The value defaults to TAPI if not specified.*
 
+
 #### Log Entries and Templates
 Relativity Logging uses [Serilog](https://serilog.net/) to format each log entry. Because Relativity Logging is the presumed default, the [Serilog DSL](https://github.com/serilog/serilog/wiki/Writing-Log-Events) is used throughout TAPI. When using a custom `ITransferLog` implementation, the message template and properties must be converted to a string; otherwise, an exception is thrown when calling the String.Format method. [This StackOverflow page](https://stackoverflow.com/questions/26875831/how-do-i-render-a-template-and-its-arguments-manually-in-serilog) provides an example on how to use the `MessageTemplateParser` to convert the Serilog message and properties to a properly formatted string.
 
+
 ### DateTime object values
 All `DateTime` objects values used by TAPI are in local time.
+
 
 ### Binding redirect for NewtonSoft.Json
 
