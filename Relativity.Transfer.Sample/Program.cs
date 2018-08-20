@@ -8,7 +8,6 @@ namespace Relativity.Transfer
 {
     using System;
     using System.IO;
-    using System.Net;
     using System.Threading;
 
     /// <summary>
@@ -24,13 +23,15 @@ namespace Relativity.Transfer
         /// </param>
         public static void Main(string[] args)
         {
-            // Suppress SSL validation errors.
-            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, errors) => true;
+            // Uncomment to suppress SSL validation errors.
+            //// ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, errors) => true;
 
             try
             {
                 // Setup global settings for all transfers.
+                GlobalSettings.Instance.ApmFireAndForgetEnabled = false;
                 GlobalSettings.Instance.ApplicationName = "sample-app";
+                GlobalSettings.Instance.CommandLineModeEnabled = true;                
 
                 // Don't be too aggressive with logging statistics.
                 GlobalSettings.Instance.StatisticsLogEnabled = true;
@@ -40,15 +41,37 @@ namespace Relativity.Transfer
                 GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 100;
 
                 // All temp files can be stored in a specific directory or UNC share.
-                GlobalSettings.Instance.TempDirectory = System.IO.Path.Combine(Environment.CurrentDirectory, "Transfer-Logs");
+                GlobalSettings.Instance.TempDirectory = Path.Combine(Environment.CurrentDirectory, "Transfer-Logs");
 
-                // If a transfer log isn't specified, Relativity Logging is always used. You can optionally construct the transfer log and pass the ILog instance too.
-                //// using (ITransferLog transferLog = new RelativityTransferLog(logInstance))
+                // Setup Relativity Logging
+                System.Reflection.Assembly assembly = System.Reflection.Assembly.GetEntryAssembly();
+                string directory = Directory.GetParent(assembly.Location).FullName;
+                Relativity.Logging.LoggerOptions loggerOptions = new Relativity.Logging.LoggerOptions
+                {
+                    Application = "F456D022-5F91-42A5-B00F-5609AED8C9EF",
+                    ConfigurationFileLocation = Path.Combine(directory, "LogConfig.xml"),
+                    System = "Data-Transfer",
+                    SubSystem = "Sample-Cli"
+                };
 
-                // Using a custom transfer log to send all entries to Serilog.
-                using (ITransferLog transferLog = new CustomTransferLog())
+                loggerOptions.AddSinkParameter(
+                    Logging.Configuration.SeqSinkConfig.ServerUrlSinkParameterKey,
+                    new Uri("http://localhost:5341"));
+                Relativity.Logging.ILog logger = Relativity.Logging.Factory.LogFactory.GetLogger(loggerOptions);
+                using (ITransferLog transferLog = new RelativityTransferLog(logger, false))
                 {
                     ExecuteUploadDemo(transferLog);
+                }
+            }
+            catch (TransferException e)
+            {
+                if (e.Fatal)
+                {
+                    Console.WriteLine("A fatal transfer failure has occurred. Error: " + e);
+                }
+                else
+                {
+                    Console.WriteLine("A non-fatal transfer failure has occurred. Error: " + e);
                 }
             }
             catch (Exception e)
@@ -125,41 +148,34 @@ namespace Relativity.Transfer
                 // Display a friendly name for the client that was just created.
                 Console.WriteLine($"Client {client.DisplayName} has been created.");
 
-                // Retrieve workspace details in order to specify a UNC path.
-                var workspace = await client.GetWorkspaceAsync(cancellationTokenSource.Token);
-                var targetPath = Path.Combine(workspace.DefaultFileShareUncPath + @"\UploadDataset");
+                // Retrieve workspace details in order to specify the correct target path.
+                Workspace workspace = await client.GetWorkspaceAsync(cancellationTokenSource.Token);
+                string targetPath = Path.Combine(workspace.DefaultFileShareUncPath, "UploadDataset");
                 TransferRequest uploadRequest = TransferRequest.ForUploadJob(targetPath, context);
 
-                // When using the Aspera client, UNIX-based relative paths are required. To support UNC paths, an Aspera specific path resolver must be specified.
-                if (client.Client == WellKnownTransferClient.Aspera)
-                {
-                    // The target path resolver is required when uploading.
-                    uploadRequest.TargetPathResolver = new Relativity.Transfer.Aspera.AsperaUncPathResolver(workspace.DefaultFileShareUncPath, 1);
-
-                    // The source path resolver is required when downloading.
-                    //// downloadRequest.SourcePathResolver = new Relativity.Transfer.Aspera.AsperaUncPathResolver(workspace.DefaultFileShareUncPath, 1);
-                }
-
                 // Once the job is created, an asynchronous queue is available to add paths and perform immediate transfers.
-                using (var job = await client.CreateJobAsync(uploadRequest, cancellationTokenSource.Token))
+                using (ITransferJob job = await client.CreateJobAsync(uploadRequest, cancellationTokenSource.Token))
                 {
                     // Setup the upload request using 1 of 2 approaches.
-                    // 1. Use the SearchLocalPathsAsync API.
-                    // 2. Specify the precise files.
+                    // 1. Use the IPathEnumerator API.
+                    // 2. Specify the paths.
+                    string sampleDirectory = Path.Combine(Environment.CurrentDirectory, "Resources");
+                    string samplePdfFile = Path.Combine(sampleDirectory, "Sample.pdf");
+                    
+                    //// Uncomment to search for the transfer paths.
+                    ////IPathEnumerator pathEnumerator = client.CreatePathEnumerator(true);
+                    ////PathEnumeratorContext pathEnumeratorContext =
+                    ////    new PathEnumeratorContext(configuration, new[] { sampleDirectory }, targetPath);
+                    ////EnumeratedPathsResult searchResults = await pathEnumerator.EnumerateAsync(
+                    ////    pathEnumeratorContext,
+                    ////    cancellationTokenSource.Token);
+                    ////await job.AddPathsAsync(searchResults.Paths, cancellationTokenSource.Token);
 
-                    //// TODO: Update with a search path.
-                    //const bool PreserveFolders = true;
-                    //var searchResults = await client.SearchLocalPathsAsync(
-                    //                        @"C:\Datasets\transfer-api-sample",
-                    //                        PreserveFolders,
-                    //                        targetPath,
-                    //                        cancellationTokenSource.Token);
-                    //job.AddPaths(searchResults.Paths);
+                    // The transfer begins once the transfer paths are added to the job.
+                    await job.AddPathsAsync(new[]
+                        { new TransferPath { SourcePath = samplePdfFile }}, cancellationTokenSource.Token);
 
-                    // TODO: Update the array with valid source paths to upload.
-                    job.AddPaths(new[] { new TransferPath { SourcePath = @"C:\Datasets\transfer-api-sample\sample.pdf" } });
-
-                    //// Some clients support the ability to change the data rate at runtime.
+                    //// Uncomment to change the data rate at runtime.
                     //if (job.IsDataRateChangeSupported)
                     //{
                     //    job.ChangeDataRate(0, 200);

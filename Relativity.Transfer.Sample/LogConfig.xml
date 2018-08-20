@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<kCuraLogging masterLoggingConfiguration="EDDS">
+  <rules enabled="true">
+    <rule system="*" loggingLevel="Information" sink="File1;Seq1;Http1"/>
+  </rules>
+  <sinks>
+    <fileSink name="File1" logFileLocation="%temp%\Relativity-Transfer\Sample\" maxFileSizeInMB ="10000" />
+    <seqSink name="Seq1" batchSizeLimit="50" waitPeriodSeconds="15" />
+    <relativityHttpSink name="Http1" batchSizeLimit="50" waitPeriodSeconds="15" />
+  </sinks>
+</kCuraLogging>

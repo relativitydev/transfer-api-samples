@@ -1,9 +1,24 @@
-# Relativity Transfer API for .NET
+﻿# Relativity Transfer API for .NET
 You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, HTTP, SMB, and Aspera. You can also stream data from Relativity. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing. Unlike the Import API, TAPI does not create Relativity objects associated with the data, for example, documents and RDOs.
 
 ***Important!**  We're providing TAPI as a preview release so that you can evaluate it and provide us with feedback. The preview release offers a functional API, which will continue to undergo minor contract changes and further enhancements.*
 
-TAPI features include:
+
+## Built-in RCC package and transfer support
+The TAPI supports the use of containerization using Relativity Collection Container (RCC) files. The .rcc extension indicates a file type with a proprietary format for persisting data to SQLite databases. These sidecar databases can store any type of data using JSON. They are encrypted to secure their contents. They act as protective containers ensuring that you control any modifications to the original native files and their associated metadata during transfers. 
+
+The TAPI improves overall transfer process by containerizing multiple small files, which prevents increased overhead and performance degradation. It also improves performance by using a service to quickly extract content from the RCC files. 
+
+You can find sample code that illustrates how to compress data in RCC files and then extract them in the Relativity.Transfer.Package.Zip.Sample folder. It contains a project that illustrates how to perform the following tasks:
+
+* Create a sample ZIP package library that uses classes from the System.IO.Compression namespace in the .NET framework to create ZIP archives.
+* Stream the file to server and monitor its progress.
+* Extract contents from the Zip archive.
+
+
+## Additional TAPI features
+The TAPI also includes the following features:
+
 * Only asynchronous methods
 * Thread-safe
 * Transfers in a single request or by a request job
@@ -16,6 +31,7 @@ TAPI features include:
 
 We are  providing a sample solution to help you get started developing your own transfer applications.
 
+
 ## Integrations
 As of this writing, TAPI is now integrated within the following components and applications:
 
@@ -24,8 +40,16 @@ As of this writing, TAPI is now integrated within the following components and a
 * Relativity One Staging Explorer (ROSE)
 * R1 Import via Azure Functions
 
+
 ## Target Framework
 * .NET 4.6.2
+
+
+## Runtime Requirements
+* Visual C++ 2010 x86 Runtime
+
+***Required** for Open SSL libraries(libeay32.dll, ssleay32.dll) and the Aspera ASCP.exe**
+***Extracted** under %TEMP%/Relativity-Transfer/Aspera-Runtime/bin**
 
 
 ## Dependencies
@@ -43,8 +67,8 @@ The following NuGet packages are required by the TAPI solution:
 
 ***Note:** The RCC packages are only required when using the RCC package library API's.**
 
-
 To obtain TAPI libraries, contact [Relativity support](mailto:support@relativity.com).
+
 
 ## Components
 The Transfer API consists of the following key components:
@@ -55,12 +79,14 @@ The Transfer API consists of the following key components:
 * **Relativity.Transfer.TransferContext** - the context for transfer request operations, including relevant events and basic configuration.
 * **Relativity.Transfer.TransferPath** - the path that details the source, target, and optional filename properties.
 
+
 ## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
 
 * Aspera
 * File Share
 * HTTP
+
 
 ## Sample solution
 
@@ -79,35 +105,23 @@ The `Program.cs` logic is as follows:
 We set up the application logging as the first step in the `Main()` method:
 ```csharp
 try
-    {
-        // Setup global settings for all transfers.
-        GlobalSettings.Instance.ApplicationName = "sample-app";
+{    
+    // Setup global settings for all transfers.
+    GlobalSettings.Instance.ApplicationName = "Sample App";    
+    GlobalSettings.Instance.StatisticsLogEnabled = true;    
+    GlobalSettings.Instance.StatisticsLogIntervalSeconds = 1;
 
-        // Don't be too aggressive with logging statistics.
-        GlobalSettings.Instance.StatisticsLogEnabled = true;
-        GlobalSettings.Instance.StatisticsLogIntervalSeconds = 2;
-
-        // Any attempt to exceed this max will throw an exception.
-        GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 100;
-
-        // All temp files can be stored in a specific directory or UNC share.
-        //// GlobalSettings.Instance.TempDirectory = @"C:\MyTemp";
-
-        // If a transfer log isn't specified, Relativity Logging is always used. You can optionally construct the transfer log and pass the ILog instance too.
-        //// using (ITransferLog transferLog = new RelativityTransferLog(logInstance))
-
-        // Using a custom transfer log to send all entries to Serilog.
-        using (ITransferLog transferLog = new CustomTransferLog())
-        {
-            ExecuteUploadDemo(transferLog);
-        }
+    // Using a custom transfer log to send all entries to Serilog.    
+    using (ITransferLog transferLog = new CustomTransferLog())    
+    {        
+        ExecuteUploadDemo(transferLog);
     }
     catch (Exception e)
-    {
+    {    
         Console.WriteLine("A serious transfer failure has occurred. Error: " + e);
     }
     finally
-    {
+    {    
         Console.ReadLine();
     }
 }
@@ -147,13 +161,14 @@ public static void Main(string[] args)
 * [Setting up a transfer request job](#setting-up-a-transfer-request-job)
 * [Wait for job completion and results](#wait-for-job-completion-and-results)
 
+
 ### Subscribing to transfer events
 
 `ExecuteUploadDemo` begins with instantiation of the `TransferContext` object. `TransferContext` is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.  
 
 ```csharp
 // The context object is used to decouple operations such as progress from other TAPI objects.
-TransferContext context = new TransferContext { StatisticsRateSeconds = 2.0 };
+TransferContext context = new TransferContext { StatisticsRateSeconds = .5 };
 ```
 You can set a number of options on the context object for subscribing to events:
 
@@ -183,12 +198,12 @@ context.TransferJobRetry += (sender, args) =>
 
 context.TransferStatistics += (sender, args) =>
 {
-    // Disabling since the GlobalSettings are already configured to write the transfer statistics to the console.
-    // Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps");
+    Console.WriteLine($"*** Progress: {args.Statistics.Progress:00.00}%, Transfer rate: {args.Statistics.TransferRateMbps:00.00} Mbps");
 };
 ```
 
 For more information, see [TransferContext](#transfercontext).
+
 
 ### Cancellation
 We then create the cancellation token. The use of cancellation token logic is strongly recommended with potentially long-running transfer operations:
@@ -198,6 +213,8 @@ We then create the cancellation token. The use of cancellation token logic is st
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 //// cancellationTokenSource.Cancel();
 ```
+
+
 ### Relativity host setup and authentication
 Next, we construct the Relativity host object and credentials. This is where you must specify the Relativity URL, credentials, and workspace artifact ID before running the solution:
 
@@ -209,19 +226,11 @@ int workspaceId = 1027428;
 ```
 TAPI supports basic authentication and OAuth2. For more information about Relativity OAuth2 clients, see {Relativity Documentation Site]("https://help.relativity.com/9.5/Content/Relativity/Authentication/OAuth2_clients.htm"). 
 
+
 ### Creating a client
-We then create a transfer client using the `CreateClientAsync()` method and supply a custom `ClientConfiguration` to the transfer. Note the `using` statement with `CreateClientAsync()` (as well as other asynchronous TAPI operations that implement `IDisposable`):
+We then create a transfer client using the `CreateClientAsync()` method. Note the `using` statement with `CreateClientAsync()` (as well as other asynchronous TAPI operations that implement `IDisposable`):
 
 ```csharp
-// The configuration object provides numerous options to customize the transfer.
-ClientConfiguration configuration =
-    new ClientConfiguration
-        {
-            PreCalculateJobSize = false,
-            FileNotFoundErrorsRetry = false,
-            PreserveDates = true
-        };
-
 // The CreateClientAsync method chooses the best client at runtime.  
 using (IRelativityTransferHost host = new RelativityTransferHost(new RelativityConnectionInfo(relativityHost, credential, workspaceId)))
 using (ITransferClient client = await host.CreateClientAsync(cancellationTokenSource.Token))
@@ -230,6 +239,7 @@ using (ITransferClient client = await host.CreateClientAsync(cancellationTokenSo
     Console.WriteLine($"Client {client.DisplayName} has been created.");
 ```
 The `CreateClientAsync()` method queries the specified Relativity workspace for configured transfer methods (Aspera, file share, or HTTP) to determine which clients would be supported and selects the optimal method at runtime. Note that you can also use the ``CreateClient`` method to explicitly instruct TAPI to construct a certain type of client client, for example, if you know that FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
+
 
 ###  Setting up a transfer request job
 Next, we retrieve Relativity workspace details to get the UNC path of the destination share, and use it to create the `TransferRequest` object:
@@ -243,6 +253,7 @@ Note that this is where we specify the `TransferContext` object created earlier 
 
 In cases when the file paths are not known and you want to avoid calling `TransferAsync` one file at a time (as the paths are discovered), use the transfer via job (`TransferRequest.ForUploadJob()`). TAPI jobs provide a mechanism for controlling the lifecycle of the job and adding paths as they become known without incurring a performance hit. Transfer via a request (`TransferRequest.ForUpload()` method) can be used when the list of file paths to be transferred is already known. For more information, see [Transfer via request](#transfer-via-request) and [Transfer via job](#transfer-via-job).
 
+
 ### Wait for job completion and results
 We then create a transfer job. After that, we add file paths to the asynchronous queue and perform immediate transfers:
 
@@ -250,19 +261,6 @@ We then create a transfer job. After that, we add file paths to the asynchronous
 // Once the job is created, an asynchronous queue is available to add paths and perform immediate transfers.
 using (var job = await client.CreateJobAsync(uploadRequest, cancellationTokenSource.Token))
 {
-    // Setup the upload request using 1 of 2 approaches.
-    // 1. Use the SearchLocalPathsAsync API.
-    // 2. Specify the precise files.
-
-    //// TODO: Update with a search path.
-    //const bool PreserveFolders = true;
-    //var searchResults = await client.SearchLocalPathsAsync(
-    //                        @"C:\Datasets\transfer-api-sample",
-    //                        PreserveFolders,
-    //                        targetPath,
-    //                        cancellationTokenSource.Token);
-    //job.AddPaths(searchResults.Paths);
-
     // TODO: Update this collection with valid source paths to upload.
     job.AddPaths(
     new[]
@@ -284,12 +282,14 @@ Finally, we write transfer results out to the console.
 
 The following sections provide detailed reference for the Transfer API operations illustrated by the sample program above.
 
+
 ## Usage
 The next sections cover TAPI usage including:
 
 * [RelativityConnectionInfo](#relativityconnectioninfo)
 * [RelativityTransferHost](#relativitytransferhost)
 * [ClientConfiguration](#clientconfiguration)
+* [AsperaClientConfiguration](#asperaclientconfiguration)
 * [ITransferClient](#itransferclient)
 * [Dynamic Transfer Client](#dynamic-transfer-client)
 * [ITransferClientStrategy](#itransferclientstrategy)
@@ -298,20 +298,24 @@ The next sections cover TAPI usage including:
 * [IRemotePathResolver](#iremotepathresolver)
 * [IRetryStrategy](#iretrystrategy)
 * [TransferPath](#transferpath)
-* [TransferRequest](#transferrequest)
+* [ITransferRequest](#itransferrequest)
 * [ITransferResult](#itransferresult)
 * [TransferStatus](#transferstatus)
 * [ITransferJob](#itransferjob)
+* [Local and Remote Enumeration](#local-and-remote-enumeration)
 * [Transfer via Request](#transfer-via-request)
+* [Aspera transfer requests](#aspera-transfer-requests)
 * [Transfer via Job](#transfer-via-job)
 * [Change Job Data Rate](#change-job-data-rate)
 * [Transfer Events and Statistics](#transfer-events-and-statistics)
+* [Transfer Application Performance Monitoring and Metrics](#transfer-application-performance-monitoring-and-metrics)
 * [Error Handling and ITransferIssue](#error-handling-and-itransferissue)
 * [Packaging and RCC Package Library](#packaging-and-rcc-package-library)
 * [Global Settings](#global-settings)
 * [Logging](#logging)
 * [DateTime object values](#datetime-object-values)
 * [Binding Redirect for NewtonSoft.Json](#binding-redirect-for-newtonsoftjson)
+
 
 ### RelativityConnectionInfo
 The first thing you must do is construct a `RelativityConnectionInfo` object, which requires the following:
@@ -341,6 +345,7 @@ var connectionInfo = new RelativityConnectionInfo(
     WorkspaceId);
 ```
 
+
 ### RelativityTransferHost
 Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block.
 
@@ -351,30 +356,70 @@ using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo)
 
 ***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
 
-### ClientConfiguration
-Before you can create a client, you have to provide a `ClientConfiguration` instance. If you know which client you would like to construct, choose strongly-typed class object that derives from `ClientConfiguration`. As you might expect, there are a number client specific properties to control the client transfer behavior:
 
-| Property                   | Description                                                                                                                                                                                                  | Default Value                      |
-| ---------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
-| ClientId                   | The transfer client unique identifier.                                                                                                                                                                       | Guid.Empty                         |
-| Client                     | The well-known transfer client.                                                                                                                                                                              | WellKnownTransferClient.Unassigned |
-| CookieContainer            | The HTTP cookie container.                                                                                                                                                                                   | new instance                       |
-| FileNotFoundErrorsDisabled | The value indicating whether to disable treating missing files as errors.                                                                                                                                    | false                              |
-| FileNotFoundErrorsRetry    | The value indicating whether to retry missing file errors..                                                                                                                                                  | true                               |
-| FileSystemChunkSize        | The size of chunks, in bytes, when transferring files over file-system transports.                                                                                                                           | 16KB                               |
-| HttpChunkSize              | The size of chunks, in bytes, when transferring files over HTTP transports.                                                                                                                                  | 1MB                                |
-| MaxHttpRetryAttempts       | The maximum number of retry attempts for a HTTP service call.                                                                                                                                                | 5                                  |
-| MaxJobParallelism          | The maximum degree of parallelism when executing a job. This value specifies the number of threads used to transfer the paths contained within the job queue.                                                | 1                                  |
-| MaxJobRetryAttempts        | The maximum number of job retry attempts.                                                                                                                                                                    | 3                                  |
-| MinDataRateMbpsKey         | The minimum data rate in Mbps units. This setting isn't guaranteed to be used by all clients but considered a hint to clients that support targeted data rates.                                              | 0                                  |
-| PreCalculateJobSize        | The value indicating whether the overall job size is pre-calculated to use more accurate byte-level progress and statistics. Care should be taken when using this setting on massive datasets.               | false                              |
-| PreserveDates              | The value indicating whether file dates (metadata) are preserved.                                                                                                                                            | true                               |
-| TargetDataRateMbps         | The target data rate in Mbps units. This setting isn't guaranteed to be used by all clients but considered a hint to clients that support targeted data rates.                                               | 100 Mbps                           |
-| TimeoutSeconds             | The timeout. This value is typically used whenever executing a web-service.                                                                                                                                  | 300 seconds                        |
-| TransferLogDirectory       | The directory where clients can store transfer logs. This setting isn't guaranteed to be used by all clients but provided if specialized transfer log files are available, independent of Relativity Logging.| null                               |
-| ValidateSourcePaths        | The value indicating whether to validate source paths before they're added to the job queue. An `ArgumentException` is thrown when a validation failure occurs.                                            | true                               |
+### ClientConfiguration
+Before you can create a client, you have to provide a `ClientConfiguration` instance. If you know which client you would like to construct, choose a strongly-typed class object that derives from `ClientConfiguration`. The vast majority of settings contained within this class object are supported by all clients unless otherwise specified.
+
+| Property                   | Description                                                                                                                                                                                                                                 | Default Value                      |
+| ---------------------------| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
+| BadPathErrorsRetry         | Enable or disable whether to retry intermittent `TransferPathStatus.BadPathError` I/O errors or treat as a fatal error.           						                                                                               | false						        |
+| BcpRootFolder              | The name of the folder, located at the root of the file shares, where all bulk-load files are stored.             						                                                                                                   | null  					            |
+| Client                     | The transfer client unique identifier. This is automatically set when the transfer client is constructed via best-fit strategy.                                                                                                             | WellKnownTransferClient.Unassigned |
+| ClientId                   | The well-known transfer client value. This is automatically set when the transfer client is constructed via best-fit strategy.                                                                                                              | Guid.Empty                         |
+| CookieContainer            | The HTTP cookie container.                                                                                                                                                                                                                  | new instance                       |
+| Credential                 | The client specific object used for authentication purposes and should only be set when overriding the auto-configuration mechanism.                                                                                                        | null                               |
+| FileNotFoundErrorsDisabled | Enable or disable whether to treat missing files as warnings or errors.                                                                                                                                                                     | false                              |
+| FileNotFoundErrorsRetry    | Enable or disable whether to retry missing file errors.                                                                                                                                                                                     | true                               |
+| FileSystemChunkSize        | The size of each byte chunk transferred over file-system based transfer clients.                                                                                                                                                            | 16KB                               |
+| FileTransferHint           | The hint provided to the transfer client that indicates what type of transfer workflow is being requested. This is generally used by transfer clients to tune and optimize the transfer.                                                    | FileTransferHint.Natives           |
+| HttpChunkSize              | The size of each byte chunk transferred over HTTP based transfer clients.                                                                                                                                                                   | 1MB                                |
+| HttpTimeoutSeconds         | The timeout, in seconds, for an HTTP or REST service call.                                                                                                                                                                                  | 300 seconds                        |
+| MaxHttpRetryAttempts       | The maximum number of retry attempts for an HTTP or REST service call.                                                                                                                                                                      | 5                                  |
+| MaxJobParallelism          | The maximum number of threads used to transfer all paths contained within the transfer job queue.                                                                                                                                           | 1                                  |
+| MaxJobRetryAttempts        | The maximum number of transfer job retry attempts.                                                                                                                                                                                          | 3                                  |
+| MinDataRateMbps            | The minimum data rate in Mbps unit. This isn't supported by all clients but considered a hint to clients that support configurable data rates.                                                                                              | 0                                  |
+| OverwriteFiles             | Enable or disable whether to overwrite files at the target path. The transfer job will fail when this option is disabled and target paths already exist.                                                                                    | true                               |
+| PermissionErrorsRetry      | Enable or disable whether to retry transferring files that fail due to permission or file access errors.          								                                                                                           | false  						    |
+| PreCalculateJobSize        | Enable or disable whether to pre-calculate the file/byte totals within the job to improve progress accuracy. This feature is deprecated and local/remote path enumeration should be used instead.                                           | false                              |
+| PreserveDates              | Enable or disable whether to preserve file created, modified, and access times.                                                                                                                                                             | true                               |
+| SupportCheckPath           | The optional path used during auto-configuration to allow each potential client perform additional support checks. This is typically used when a client is supported but may not have access or proper configuration to the specified path. | null                               |
+| TargetDataRateMbps         | The target data rate in Mbps unit. This isn't supported by all clients but considered a hint to clients that support configurable data rates.                                                                                               | 100 Mbps                           |
+| TransferEmptyDirectories   | Enable or disable whether to transfer empty directories.                                                                                                                                                                                    | false                              |       
+| TransferLogDirectory       | The directory where transfer clients can store more detailed transfer logs separate from standard logging.                                                                                                                                  | null                               |
+| ValidateSourcePaths        | Enable or disable whether to validate source paths before adding to the transfer job queue. When enabled, this is an expensive operation on datasets containing a large number of small files.                                              | true                               |
 
 ***Note:** API users are strongly encouraged to set the `TransferLogDirectory` because clients that support this feature typically write more detailed diagnostic information into their custom log files.*
+
+### AsperaClientConfiguration
+The Aspera transfer engine defines a large number of properties to customize the transfer request. As a result, the `AsperaClientConfiguration` class object is more extensive compared to any client and special care must be taken when changing or deviating from some of the default values.
+
+| Property                      | Description                                                                                                                                                                                                                                                                                                                                                                               | Default Value              |
+| ------------------------------| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
+| AccountUserName               | The optional Aspera account username. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.           			                                                                                                                                                        | null                       |
+| AccountPassword               | The optional Aspera account password. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.           			                                                                                                                                                        | null                       |
+| DocRootLevels                 | The number of levels the Aspera doc root folder is relative to the File share Resource Server UNC path. This should never be changed unless the server configuration has deviated from the default.                          			                                                                                                                                                    | 1                          |
+| DocRootLevels                 | The number of levels the Aspera doc root folder is relative to the File share Resource Server UNC path. This should never be changed unless the server configuration has deviated from the default.                          			                                                                                                                                                    | 1                          |
+| HealthCheckLogMaxLine         | The maximum number of lines to retrieve from the Aspera transfer log when performing a diagnostic check.                                                                                                                                                                                                                                                                                  | 100                        |
+| Host                          | The optional Aspera host name. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.                   			                                                                                                                                                        | null                       |
+| CreateDirectories             | Enable or disable whether to automatically create directories when they don't already exist.                                                                                                                                  			                                                                                                                                                | true                       |
+| EncryptionCipher              | The cipher used to encrypt all transferred data. Accepted values include: NONE|AES_128|AES_192|AES_256                                                                                                                                  			                                                                                                                                        | AES_256                    |
+| FaspDebugEnabled              | Enable or disable whether to apply debug logging to the transfer logs.                                                                                                                                 			                                                                                                                                                                        | false                      |
+| MetaThreadCount               | The number of threads the Aspera receiver uses to create directories or 0 byte files. It takes effect on both client and server, when acting as a receiver. The default of zero causes the Aspera receiver to use its internal default, which may vary by operating system. This is a performance-tuning parameter for an Aspera receiver.                                                | 0                          |
+| NodeAccountUserName           | The optional Aspera Node API account user name. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.                                                                                                                                                                   | null                       |
+| NodeAccountPassword           | The optional Aspera Node API account password. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.                                                                                                                                                                    | null                       |
+| NodeHost                      | The optional Aspera Node API host name. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.                                                                                                                                                                           | null                       |
+| OverwritePolicy               | The policy that determines whether to overwrite files at the target path. The transfer job will fail when this option is disabled and target paths already exist. Accepted values include: DIFFERENT|ALWAYS|DIFFERENT_AND_OLDER|NEVER|OLDER.                                                                                                                                              | ALWAYS                     |
+| PartialFileSuffix             | The filename extension on the destination computer while the file is being transferred. Once the file has been completely transferred, this filename extension is removed. This must be specified when the OverwritePolicy is set.                                                                                                                                                        | .partial                   |
+| Policy                        | The default transfer rate and bandwidth policy. Care must be taken when deviating from the default FAIR policy since it can cause significant transfer errors if an overly aggressive setting is used. Accepted values include: FAIR|FIXED|HIGH|LOW.                                                                                                                                      | FAIR                       |
+| ReadThreadCount               | The number of threads the Aspera sender uses to read file contents from the source disk drive. It takes effect on both client and server when acting as a sender. The default of zero causes the Aspera sender to use its internal default, which may vary by operating system. This is a performance-tuning parameter for an Aspera sender.                                              | 0                          |
+| ResumeCheck                   | The resume policy for partially transferred files. When specified, retry attempts can take longer if the dataset includes a large number of small files.                                                                                                                                                                                                                                  | OFF                        |
+| SaveBeforeOverwriteEnabled    | Enable or disable whether to modify a filename that would overwrite an existing file by renaming to filename.yyyy.mm.dd.hh.mm.ss.index.ext (where index is set to 1 at the beginning of each new second and incremented for each file saved in this manner during the same second) in the same directory before writing the new file. File attributes are maintained in the renamed file. | false                      |
+| ScanThreadCount               | The number of threads the Aspera sender uses to scan directory contents. It takes effect on both client and server, when acting as a sender. The default of zero causes the Aspera sender to use its internal default. This is a performance-tuning parameter for an Aspera sender.                                                                                                       | 0                          |
+| TcpPort                       | The TCP port used for transfer initialization.                                                                                                                                                                                                                                                                                                                                            | 33001                      |
+| TestConnectionDestinationPath | The remote destination path where all test connection zero-byte files are transferred.                                                                                                                                                                                                                                                                                                    | /FTA/TestConnectionResults |
+| UdpPortStartRange             | The UDP start port range used for transferring data.                                                                                                                                                                                                                                                                                                                                      | 33001                      |
+| UdpPortEndRange               | The UDP end port range used for transferring data.                                                                                                                                                                                                                                                                                                                                        | 33050                      |
+| WriteThreadCount              | The number of threads the Aspera receiver uses to write the file contents to the destination disk drive. It takes effect on both client and server, when acting as a receiver. The default of zero causes the Aspera receiver to use its internal default, which may vary by operating system. This is a performance-tuning parameter for an Aspera receiver.                             | 0                          |
 
 
 ### ITransferClient
@@ -419,6 +464,7 @@ using (ITransferClient client = await host.CreateClientAsync(new ClientConfigura
 
 ***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
 
+
 ### ITransferClientStrategy
 
 When using the dynamic transfer client, a strategy design pattern is used to determine the order in which clients are checked for compatibility. Out of the box, the **default strategy** is as follows:
@@ -436,7 +482,9 @@ interface ITransferClientStrategy
 }
 ```
 
+
 The caller is provided with the Relativity instance and all discovered transfer client plugin metadata. The returned collection is then used to provide a sorted list of candidates to use.
+
 
 ### Client support check
 Given a transfer client object, the `SupportCheckAsync` method is called to perform the following checks:
@@ -454,6 +502,7 @@ using (ITransferClient client = host.CreateClient(new FileShareClientConfigurati
     Console.WriteLine($"Support result: {result.IsSupported}");
 }
 ```
+
 
 ### Connection check
 A connection check performs a small upload and download to not only verify connectivity but to ensure support for reading from and writing to the storage. Likewise, a context object is provided to retrieve status messages. The check can be done on a per-client basis or a single method to exercise connection checks for all available clients.
@@ -481,7 +530,7 @@ using (ITransferClient client = host.CreateClient(new FileShareClientConfigurati
 
 
 ### IRemotePathResolver
-The `TransferRequest` object exposes optional `SourcePathResolver` and `TargetPathResolver` properties to take a given path and adapt it. The signature for this interface is as follows:
+The `ITransferRequest` object exposes optional `SourcePathResolver` and `TargetPathResolver` properties to take a given path and adapt it. The signature for this interface is as follows:
 
 ```csharp
 interface IRemotePathResolver
@@ -492,11 +541,11 @@ interface IRemotePathResolver
 
 The primary use-case for path resolvers is adding backwards compatibility to a client. For example, the Aspera client employs resolvers to adapt UNC paths to native Aspera UNIX-style paths.
 
-***Note:** The library provides **AsperaUncPathResolver** for API users that wish to use Aspera clients when using UNC paths exclusively. This **must** be specified when native Aspera paths are **NOT** used.*
+***Note:** The library provides **AsperaUncPathResolver** for API users that wish to use Aspera clients when using UNC paths exclusively. This is **automatically** used by Aspera jobs as long as `ITransferRequest.RemotePathsInUncFormat` is true.
 
 
 ### IRetryStrategy
-The `TransferRequest` object exposes an optional `RetryStrategy` property to define a method that dictates how much time is spent in between retry attempts. The signature for this interface is as follows:
+The `ITransferRequest` object exposes an optional `RetryStrategy` property to define a method that dictates how much time is spent in between retry attempts. The signature for this interface is as follows:
 
 ```csharp
 interface IRetryStrategy
@@ -509,6 +558,7 @@ The TAPI library provides a `RetryStrategies` static class to provide two common
 
 * **Exponential backoff** - This is the default strategy where each attempt waits longer by a power of 2.
 * **Fixed Time** - This simply defines a constant wait period regardless of the number of attempts.
+
 
 ### TransferPath
 This object encapsulates a local or remote path and can be found throughout the API. This is a convenient extensibility point to support different kinds of paths.
@@ -526,22 +576,27 @@ This object encapsulates a local or remote path and can be found throughout the 
 ***Note:*** Both relative paths and paths transformed via `IRemotePathResolver` are automatically assigned to the `TransferPath` object.
 
 
-### TransferRequest
-There are several options to submit transfers and all revolve around the `TransferRequest` object.
+### ITransferRequest
+There are several options to submit transfers and all revolve around the `ITransferRequest` object.
 
-| Property           | Description |
-| ------------------ |------------------------------------------------------------------------------------------------------ |
-| ClientRequestId    | The **optional** client specified transfer request unique identifier for the entire request. If not specified, a value is automatically assigned. |
-| Context            | The **optional** transfer context to configure progress events and logging. |
-| Direction          | The **optional** transfer direction (Upload or Download). This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
-| JobId              | The **optional** unique identifier for the current submission or job. If not specified, a value is automatically assigned. |
-| Name               | The **optional** name associated with this request. For Aspera transfers, this value is attached to all reporting data and useful for identification and search purposes. |
-| Paths              | The transfer path objects. This is ignored when using a transfer job. |
-| RetryStrategy      | The **optional** IRetryStrategy instance to define the amount of time to wait in between each retry attempt. By default, an exponential backoff strategy is assigned. |
-| SourcePathResolver | The **optional** resolver used to adapt source paths from one format to another. This is set to `NullPathResolver` by default. |
-| Tag                | The **optional** object allows storing any custom object on the transfer request. |
-| TargetPath         | The transfer target path. This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
-| TargetPathResolver | The **optional** resolver used to adapt target paths from one format to another. This is set to `NullPathResolver` by default. |
+| Property               | Description |
+| ---------------------- |------------------------------------------------------------------------------------------------------ |
+| Application            | The **optional** application name for this request. When specified, this value is attached to the APM metrics and other reporting features for added insight. |
+| BatchNumber            | The current batch number. This is automatically assigned when using batches to transfer. |
+| ClientRequestId        | The **optional** client specified transfer request unique identifier for the entire request. If not specified, a value is automatically assigned. |
+| Context                | The **optional** transfer context to configure progress events and logging. |
+| Direction              | The **optional** transfer direction (Upload or Download). This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
+| JobId                  | The **optional** unique identifier for the current submission or job. If not specified, a value is automatically assigned. |
+| Name                   | The **optional** name associated with this request. For Aspera transfers, this value is attached to all reporting data and useful for identification and search purposes. |
+| Paths                  | The transfer path objects. This is ignored when using a transfer job. |
+| RemotePathsInUncFormat | The **optional** value indicating whether remote paths are in UNC format. This is set to `true` by default. |
+| RetryStrategy          | The **optional** IRetryStrategy instance to define the amount of time to wait in between each retry attempt. By default, an exponential backoff strategy is assigned. |
+| SourcePathResolver     | The **optional** resolver used to adapt source paths from one format to another. This is set to `NullPathResolver` by default. |
+| SubmitApmMetrics       | Enable or disable whether to submit APM metrics to Relativity once the transfer job completes. This is set to `true` by default. |
+| Tag                    | The **optional** object allows storing any custom object on the transfer request. |
+| TargetPath             | The transfer target path. This is a global setting which, if specified, automatically updates all `TransferPath` objects **if not already assigned**. |
+| TargetPathResolver     | The **optional** resolver used to adapt target paths from one format to another. This is set to `NullPathResolver` by default. |
+| TotalBatchCount        | The total number of batches. This is automatically assigned when using batches to transfer. |
 
 
 Although this object can be constructed directly, a number of static methods have been added to simplify construction using several overloads including:
@@ -575,6 +630,16 @@ Once the transfer is complete, the `ITransferResult` object is returned and prov
 | TransferRateMbps      | The average file transfer rate, in Mbps units, for the entire request. |
 
 
+### FileTransferHint
+This enumeration provides hints to better configure or optimize the transfer request.
+
+
+| Name                | Description |
+| ------------------- | ------------------------------------- |
+| Natives             | The request involves transferring native files. |
+| BulkLoad            | The request involves transferring bulk load files. |
+
+
 ### TransferStatus
 This enumeration provides the overall transfer status.
 
@@ -592,12 +657,14 @@ Once a client is constructed, transfer jobs are created in one of two ways (see 
 
 * Provide a life-cycle for the entire transfer.
 * Add paths to a job queue.
+* Create local or remote path enumerators to search for paths or partition large datasets into smaller chunks.
+* Change the data rate at runtime.
 * Wait for all transfers to complete.
 * Status and current statistics.
 * Retry count.
 * Retrieving a list of all processed job paths.
 
-***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
+***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly. If any operations are performed on the job after the object has been disposed, an `ObjectDisposedException` will be thrown.*
 
 
 ### Transfer via request
@@ -612,6 +679,62 @@ using (ITransferClient client = host.CreateClient(configuration))
     ITransferResult result = await client.TransferAsync(request);
     Console.WriteLine($"Status: {result.Status}");
 }
+```
+
+
+### Aspera transfer requests
+The TAPI supports transferring data to a workspace in Aspera. You can perform these transfers by using an AsperaUncPathResolver object, which transforms UNC paths to native Aspera paths. 
+
+
+#### Document root levels in RelativityOne file shares 
+To successfully transfer data to Aspera,  use the appropriate path for a  RelativityOne file share. This section provides a brief overview of the structure used for these file paths. You first  need to identify the root of the file share and document root level, which is the number of levels that a UNC path is from the root. For example, the following paths illustrate a typical RelativityOne file share:
+
+```csharp
+\\files\T002\(root)
+\\files\T002\BCPPath\
+\\files\T002\files\
+```
+To transform a UNC path to native Aspera path, instantiate a new AsperaUncPathResolver object by passing it:
+
+* A UNC path.
+* The number of levels the UNC path is from the root.
+
+For example, you have documents located at  \\files\T002\files\sample.txt. To transform this UNC path, instantiate the AsperaUncPathResolver object with the UNC path and the document root level as follows:
+ ```csharp
+new AsperaUncPathResolver(@�\\files\T002\files\�, 1);
+```
+The object resolves this path to the native Aspera file path: /files/sample.txt. It uses the following process to complete this transformation:
+
+* Truncates the path by removing one level from the UNC path. The path \\files\T002\files\ becomes \\files\T002.
+* Removes  \\files\T002 from the original path to finalize the native Aspera path as  \files\sample.txt.
+* Replaces backslashes with forward slashes:  /files/sample.txt.
+
+
+#### Aspera download and upload transfer requests 
+To make a transfer request, you need to resolve _remote_ or _server-side_ paths, depending on whether your transfer is uploading or downloading data. Specify the path resolvers based on your transfer direction:
+
+* SourcePathResolver - use this object for downloading.
+* TargetPathResolver - use this object for uploading.
+
+When you make the request call, pass a variable for the document root level to the path resolver in the transfer request. In addition, you can get the value for the DefaultFileShareUncPath argument  from the workspace object after you have created a Client object through the TAPI:
+
+```csharp
+var workspace = await client.GetWorkspaceAsync();
+```
+
+The following code sample illustrates a download request:
+
+```csharp
+TransferRequest downloadRequest =  TransferRequest.ForDownload(downloadSourcePaths, downloadTargetPath, context);
+
+downloadRequest.SourcePathResolver = new AsperaUncPathResolver(workspace.DefaultFileShareUncPath, docRootLevels);
+```
+
+The following code sample illustrates an upload request:
+
+```csharp
+TransferRequest uploadRequest = TransferRequest.ForUpload(uploadSourcePaths, uploadTargetPath, context);
+uploadRequest.TargetPathResolver = new AsperaUncPathResolver(workspace.DefaultFileShareUncPath, docRootLevels);
 ```
 
 
@@ -642,6 +765,143 @@ using (ITransferJob job = await client.CreateJobAsync(request))
 ***Note:** Multiple jobs can be created; however, bandwidth constraints can lead to transfer errors.*
 
 
+### Local and Remote Enumeration
+So far, the examples have included a small number of transfer paths. What if you want to create transfer paths from one or more search paths? More importantly, what about datasets consisting of hundreds of thousands or even millions of paths? Due to the RAM and CPU required to manage such large datasets, a different approach is required.
+
+The `IPathEnumerator` interface includes the following methods:
+
+
+```csharp
+public interface IPathEnumerator
+{
+    Task<EnumeratedPathsResult> EnumerateAsync(PathEnumeratorContext context);
+    Task<EnumeratedPathsResult> EnumerateAsync(PathEnumeratorContext context, CancellationToken token);
+    Task<SerializedPathsResult> SerializeAsync(string batchDirectory, PathEnumeratorContext context);
+    Task<SerializedPathsResult> SerializeAsync(string batchDirectory, PathEnumeratorContext context, CancellationToken token);
+}
+```
+
+A path enumerator object is capable of providing the following functionality:
+
+* Searches local and remote storage.
+* The `PathEnumeratorContext` object provides options and events.
+* Use enumeration to create `TransferPath` objects in memory.
+* Use serialization to persist `TransferPath` objects to disk.
+* The `SerializedBatch` object details the file/byte counts and the path on disk.
+
+
+As the examples below demonstrate, enumeration is slightly easier than batching because there are fewer moving parts. The decision to use one over the other ultimately comes down to the size of the dataset being transferred.
+
+The general rule of thumb: use enumeration **when are are fewer than 1M files**; otherwise, serialization should be used.
+
+
+#### Creating the IPathEnumerator
+The `ITransferClient` is responsible for creating an`IPathEnumerator` object. The ability to enumerate local paths is provided by TAPI; however, enumerating remote paths is entirely dependent on the client. When creating the object, the API caller is required to specify whether to create a local or remote instance.
+
+
+```csharp
+using (ITransferClient client = host.CreateClient(clientConfiguration))
+{
+    const bool Local = true;
+    var pathEnumerator = client.CreatePathEnumerator(Local);
+}
+```
+
+
+#### Enumeration properties and events
+All enumeration properties and events are exposed through the `PathEnumeratorContext` object and include:
+
+| Property                           | Description |
+| ---------------------------------- |----------------------------------------------------------------------------------- |
+| Configuration                      | The `ClientConfiguration` object to provide enumeration configuration options. |
+| FileNames                          | The **optional** list of filenames to filter during the search. |
+| FileShare                          | The **optional** fileshare to search (remote only). |
+| MaxDegreeOfDirectoryParallelism    | The degree of parallelism to search **local** directories. The `Environment.ProcessorCount` value is used by default. |
+| MaxDegreeOfFileParallelism         | The degree of parallelism to search **local** files. The `Environment.ProcessorCount` value is used by default. |
+| MaxDegreeOfRemotePagingParallelism | The degree of parallelism to apply when paging is used to search **remote** directories or files. The `Environment.ProcessorCount` value is used by default. |
+| PathError                          | Occurs when a path error (IE IOException) takes place during the enumeration. The event argument provides the path and associated Exception. |
+| Progress                           | Occurs when the configured ProgressRateSeconds has elapsed. The event argument provides the total bytes, files, directories, and path errors. |
+| PreserveFolders                    | Enables or disables whether to preserve the original folder structure. |
+| ProgressRateSeconds                | The rate, in seconds, that `Progress` events are raised. |
+| Option                             | The option that specifies whether to search only the top directory or the top directory and all sub-directories. |
+| SearchPaths                        | The list of local or remote paths to search. |
+| SyncBatchTotals                    | Enables or disables whether to update all serialized JSON batch files with total byte/file counts **during** the search process. The same counts are automatically updated once the search is completed. |
+| TargetPath                         | The target path applied to all enumerated or serialized `TransferPath` objects. |
+
+
+The following example demonstrates how a typical context object is constructed.
+
+```csharp
+// Assume these have already been assigned.
+ClientConfiguration configuration;
+string searchPath;
+string targetPath;
+PathEnumeratorContext context = new PathEnumeratorContext(
+    configuration,
+    searchPath,
+    targetPath,
+    PathEnumeratorOption.AllDirectories);
+context.ProgressRateSeconds = 5;
+context.PathError += (sender, args) => { };
+context.Progress += (sender, args) => { };
+```
+
+
+#### Enumerating Local or Remote Paths
+The `EnumerateAsync` method asynchronously performs the local or remote search and returns a result object containing the list of all enumerated paths.
+
+```csharp
+// Perform a local search.
+const bool Local = true;
+IPathEnumerator pathEnumerator = client.CreatePathEnumerator(Local);
+
+// Assume the context has already been created and properly configured.
+EnumeratedPathsResult result = await pathEnumerator.EnumerateAsync(pathEnumeratorContext, token).ConfigureAwait(false);
+IEnumerable<TransferPath> paths = result.Paths;
+```
+
+#### Serializing Local or Remote Paths
+The `SerializeAsync` method asynchronously performs the local or remote search and returns a result object containing the list of all serialized batches.
+
+```csharp
+// Perform a remote search.
+const bool Local = false;
+IPathEnumerator pathEnumerator = client.CreatePathEnumerator(Local);
+
+// The global settings defines the max number of bytes or files per batch.
+// IE Each serialized batch file contains no more than 100GB or 50k files (whichever comes first).
+GlobalSettings.Instance.MaxBytesPerBatch = 107374182400;
+GlobalSettings.Instance.MaxFilesPerBatch = 50000;
+
+// Assume the context has already been created and properly configured.
+SerializedPathsResult result = await pathEnumerator.SerializeAsync(batchDirectory, pathEnumeratorContext, token).ConfigureAwait(false);
+IEnumerable<SerializedBatch> batches = result.Batches;
+```
+
+
+Once the serialization completes, all `TransferPath` objects are persisted to disk in one or more batches. Batch files are in JSON format and saved within the specified batch directory. Existing transfer methods can be called to transfer all paths contained within a given batch object. It's understood that batching doesn't change existing transfer specific API's; however, it's understood that **statistics are relative to the batch being transferred**.
+
+
+The following example is a typical use-case for splitting each batch into a separate transfer job.
+
+
+```csharp
+// Assume the request has already been created and properly configured.
+ITransferRequest request;
+
+foreach (SerializedBatch batch in result.Batches)
+{
+    using (ITransferJob job = await client.CreateJobAsync(request, token).ConfigureAwait(false))
+    {
+        await job.AddPathsAsync(batch, token).ConfigureAwait(false);
+        ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
+
+        // Handle the result as always.
+    }
+}
+```
+
+
 ### Change Job Data Rate (Aspera-Only)
 The `ClientConfiguration` object supports setting a minimum and target data rate. There are situations where the API user would like to *change* the data rate at runtime. To facilitate this feature, the `ITransferJob` object allows each TAPI client to provide an implementation.
 
@@ -662,21 +922,23 @@ using (ITransferJob job = await client.CreateJobAsync(request))
 ### Transfer events and statistics
 All transfer events are exposed through the optional `TransferContext` object and include:
 
-| Property                 | Description |
-| ------------------------ |----------------------------------------------------------------------------------- |
-| EndTime                  | The **local** end time of the transfer operation. |
-| LargeFileProgress        | Occurs when a single large file progress has changed. |
-| LargeFileProgressEnabled | The value indicating whether `LargeFileProgress` events are raised. This value is disabled by default. |
-| StartTime                | The **local** start time of the transfer operation. |
-| StatisticsEnabled        | The value indicating whether `TransferStatistics` events are raised. This value is enabled by default. |
-| StatisticsRateSeconds    | The rate, in seconds, that statistics events are raised. This value is 2 seconds by default. |
-| TransferPathProgress     | Occurs when the transfer path progress changed. |
-| TransferPathIssue        | Occurs when an issue occurs transferring a path. |
-| TransferJobRetry         | Occurs when a transfer job is retried. |
-| TransferRequest          | Occurs when the overall transfer request is started or ended. |
-| TransferStatistics       | Occurs to provide overall progress, transfer rate, and total byte/file count info. |
+| Property                     | Description |
+| ---------------------------- |----------------------------------------------------------------------------------- |
+| EndTime                      | The **local** end time of the transfer operation. |
+| LargeFileProgress            | Occurs when a single large file progress has changed. |
+| LargeFileProgressEnabled     | The value indicating whether `LargeFileProgress` events are raised. This value is disabled by default. |
+| LargeFileProgressRateSeconds | The rate, in seconds, that large file progress events are raised. |
+| StartTime                    | The **local** start time of the transfer operation. |
+| StatisticsEnabled            | The value indicating whether `TransferStatistics` events are raised. This value is enabled by default. |
+| StatisticsRateSeconds        | The rate, in seconds, that statistics events are raised. This value is 2 seconds by default. |
+| TransferPathProgress         | Occurs when the transfer path progress changed. |
+| TransferPathIssue            | Occurs when an issue occurs transferring a path. |
+| TransferJobRetry             | Occurs when a transfer job is retried. |
+| TransferRequest              | Occurs when the overall transfer request is started or ended. |
+| TransferStatistics           | Occurs to provide overall progress, transfer rate, and total byte/file count info. |
 
 ***Note:*** *The `ITransferRequest` object can take an optional `TransferContext` instance when event handling is required.*
+
 
 ```csharp
 var context = new TransferContext();
@@ -690,6 +952,7 @@ context.TransferStatistics += (sender, args) => { Console.WriteLine($"Transfer s
 // Pass the context when constructing a new request.
 TransferRequest request = TransferRequest.ForUpload(SourcePath, TargetPath, context);
 ```
+
 
 The `TransferStatistics` event is notable because it provides a wealth of useful runtime transfer info. The `TransferStatisticsEventArgs` class exposes an `ITransferStatistics` object and provides the following properties.
 
@@ -725,6 +988,68 @@ The `TransferStatistics` event is notable because it provides a wealth of useful
 * *Not all transfer clients are guaranteed to supply all listed statistics.*
 * *The rate at which statistics are raised is defined via StatisticsRateSeconds property defined on TransferContext.*
 
+
+### Transfer Application Performance Monitoring and Metrics
+The section above describes several statistics that applications using TAPI can use for common use-cases like driving the application front-end. However, any application that uses TAPI is equally interested in not only accessing statistics but other key transfer details to monitor the overall application health.
+
+TAPI-enabled applications are able to take advantage of the APM framework by enabling the following opt-in transfer request setting:
+
+
+```csharp
+ITransferRequest request;
+
+// Application metrics can be identified using this property.
+request.Application = "my application";
+
+// Enable submitting APM metrics when the request has completed.
+request.SubmitApmMetrics = true;
+```
+
+
+The following table outlines all TAPI APM metric fields:
+
+
+| CustomData Metric Field Name         | Description |
+| ------------------------------------ |----------------------------------------------------------------------------------- |
+| Application                          | The application name specified in the `ITransferRequest` or `GlobalSettings` object. |
+| AverageTransferRateMbps              | The final average transfer rate in Mbps units. |
+| BatchNumber                          | The final batch number. This is only applicable when transferring via batches. |
+| Client                               | The transfer client name. |
+| ClientRequestId                      | The client request unique identifier used to setup the transfer request. |
+| ConfigurationBadPathErrorsRetry      | The configuration setting that enables or disables whether to retry bad path errors.  |
+| ConfigurationFileNotFoundErrorsRetry | The configuration setting that enables or disables whether to retry file not found errors. |
+| ConfigurationFileTransferHint        | The configuration setting that specifies the file transfer hint. |
+| ConfigurationMinDataRateMbps         | The configuration setting that specifies the minimum data rate in Mbps units. |
+| ConfigurationMaxJobParallelism       | The configuration setting that specifies the maximum degree of job parallelism. |
+| ConfigurationMaxJobRetryAttempts     | The configuration setting that specifies the maximum number of job retry attempts. |
+| ConfigurationOverwriteFiles          | The configuration setting that enables or disables whether to overwrite existing files. |
+| ConfigurationPermissionErrorsRetry   | The configuration setting that enables or disables whether to retry permission errors. |
+| ConfigurationPreserveDates           | The configuration setting that enables or disables whether to preserve all file timestamps. |
+| ConfigurationTargetDataRateMbps      | The configuration setting that specifies the target data rate in Mbps units. |
+| Elapsed                              | The total elapsed time for the transfer request. |
+| JobId                                | The job unique identifier. |
+| JobErrorCode                         | The client-specific job error code. |
+| JobErrorMessage                      | The job error message. |
+| JobMinDataRateMbps                   | The job minimum data rate in Mbps units. This value reflects job data rate changes made when calling the `ChangeDataRateAsync` method. |
+| JobTargetDataRateMbps                | The job target data rate in Mbps units. This value reflects job data rate changes made when calling the `ChangeDataRateAsync` method. |
+| RetryAttempts                        | The total number of retry attempts. |
+| Status                               | The overall transfer status. |
+| TargetPath                           | The target path specified within the `ITransferRequest` object. |
+| TotalBadPathErrors                   | The total number of bad path errors.  |
+| TotalBatchCount                      | The total number of batches. This is only applicable when transferring via batches. |
+| TotalFilePermissionErrors            | The total number of file permission errors. |
+| TotalFilesNotFound                   | The total number of files not found. |
+| TotalRequestBytes                    | The total number of request bytes. |
+| TotalRequestFiles                    | The total number of request files. |
+| TotalTransferredBytes                | The total number of transferred bytes. |
+| TotalTransferredFiles                | The total number of transferred files. |
+| WeightedTransferRateMbps             | The weighted transfer rate in Mbps units. |
+| WorkspaceGuid                        | The workspace artifact unique identifier. |
+
+
+***Notes:*** 
+
+* *New Relic APM support is provided for all Relativity One environments.*
 
 ### Error handling and ITransferIssue
 If a fatal exception occurs, such as `OutOfMemoryException`, `ThreadAbortException`, or a general connection exception, **the rule is simple: TAPI throws `TransferException`**. This must be handled by the API user.
@@ -785,6 +1110,17 @@ foreach (ITransferIssue issue in result.Issues)
     }
 }
 ```
+
+
+#### Error handling and retry behavior
+If TAPI determines that a transfer error can be retried, it will attempt to retry the transfer for the configured number of attempts before throwing a `TransferException`. The following transfer errors can be configured to be retried:
+
+| Setting Name          | Description |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| BadPathErrorsRetry    | When TAPI encounters a bad path error from Aspera only, it will use this setting to determine whether it should retry. TAPI has checks in place to prevent paths from being passed in that are invalid or otherwise not able to be transferred, so this error has only been observed during times of high load when Aspera may not be throwing the correct error code. |
+| PermissionErrorsRetry | When TAPI encounters a permission error when transferring using Aspera, Web or Fileshare, it will use this setting to determine whether it should retry. Similar to bad path errors, this will typically be thrown during times of high load, when Aspera is not necessarily throwing the correct error code. |
+
+The `ITransferStatistics` object has properties that indicate how many times the above errors have been encountered and retried. This object has a count of TotalBadPathErrors and TotalFilePermissionsErrors, which will be incremented every time these errors are encountered.
 
 
 ### Packaging and RCC Package Library
@@ -906,20 +1242,30 @@ var packageConfiguration = new PackageConfiguration
 ### Global Settings
 A number of common but optional settings are exposed by the `GlobalSettings` singleton.
 
-| Property                     | Description                                                                                                            | Default Value                  |
-| -----------------------------|------------------------------------------------------------------------------------------------------------------------|--------------------------------|
-| ApplicationName              | The name of the application. This value is prefixed within all log entries.                                            | TAPI                           |
-| LogPackageSourceFiles        | Specifies whether to log all source files added to the package. If true, the overhead can degrade package performance. | false                          |
-| MaxAllowedTargetDataRateMbps | The max target data rate, in Mbps units, allowed by the transfer API.                                                  | 600                            |
-| PluginDirectory              | The directory where all plugins are located.                                                                           | Working directory              |
-| PluginFileNameFilter         | The file name filter to limit which files are searched for plugins.                                                    | *.dll                          |
-| PluginFileNameMatch          | The file name match expression to limit which files are searched for plugins.                                          | Relativity.Transfer            |
-| PluginSearchOption           | The file search option used when searching for plugins.                                                                | SearchOption.TopDirectoryOnly  |
-| PrecalcCheckIntervalSeconds  | The number of seconds the pre-calculation values are checked to determine whether the value has changed.               | 1.0                            |
-| StatisticsLogEnabled         | Automatically log transfer statistics.                                                                                 | false                          |
-| StatisticsLogIntervalSeconds | The interval, in seconds, that transer statistics are logged.                                                          | 2.0                            |
-| StatisticsMaxSamples         | The maximum number of statistics transfer rate samples to add additional weight to the remaining time calculation.     | 8                              |
-| TempDirectory                | The directory used for temp storage.                                                                                   | Current user profile temp path |
+| Property                           | Description                                                                                                                                          | Default Value                                      |
+| -----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
+| ApmFireAndForgetEnabled            | Enables or disables whether to submit APM metrics via fire-and-forget or wait for the response.                                                      | true                                               |
+| ApplicationName                    | The name of the application. This value is prefixed within all log entries.                                                                          | TAPI                                               |
+| CacheExpiration                    | The timespan that defines when cached objects will expire. When set to TimeSpan.Zero, caching is effectively disabled.                               | 3600                                               |
+| CloudFileShareRegexPatterns        | The list of regular expressions used to match friendly or FQDN UNC paths to cloud-based file shares using file share numbers and tenant identifiers. | \\files(\d?).+(T\d{3}\w?), \\bcp(\d?).+(T\d{3}\w?) |
+| CommandLineModeEnabled             | Enables or disables whether the runtime behavior is altered for command-line usage.                                                                  | false                                              |
+| FatalHttpStatusCodes               | Specifies the list of fatal HTTP status codes.                                                                                                       | 400, 401, 403, 404                                 | 
+| FatalHttpStatusCodeDetailedMessage | The list of detailed fatal HTTP messages associated with the fatal HTTP status codes.                                                                | Messages                                           |
+| LogPackageSourceFiles              | Specifies whether to log all source files added to the package. If true, the overhead can degrade package performance.                               | false                                              |
+| MaxAllowedTargetDataRateMbps       | The maximum target data rate, in Mbps units, allowed by the transfer API.                                                                            | 600                                                |
+| MaxBytesPerBatch                   | The maximum number of bytes per batch. This is only applicable when transferring via serialized batches.                                             | 100GB                                              |
+| MaxFilesPerBatch                   | The maximum number of files per batch. This is only applicable when transferring via serialized batches.                                             | 50,000                                             |
+| NodePageSize                       | The default page size when making Aspera Node REST API calls.                                                                                        | 100                                                |
+| PluginDirectory                    | The directory where all plugins are located.                                                                                                         | Working directory                                  |
+| PluginFileNameFilter               | The file name filter to limit which files are searched for plugins.                                                                                  | *.dll                                              |
+| PluginFileNameMatch                | The file name match expression to limit which files are searched for plugins.                                                                        | Relativity.Transfer                                |
+| PluginSearchOption                 | The file search option used when searching for plugins.                                                                                              | SearchOption.TopDirectoryOnly                      |
+| PrecalcCheckIntervalSeconds        | The number of seconds the pre-calculation values are checked to determine whether the value has changed.                                             | 1.0                                                |
+| SkipTooLongPaths                   | Enable or disable skipping long paths found during search path enumeration.                                                                          | false                                              |
+| StatisticsLogEnabled               | Enables or disables whether to periodically log transfer statistics.                                                                                 | false                                              |
+| StatisticsLogIntervalSeconds       | The interval, in seconds, that transer statistics are logged.                                                                                        | 2.0                                                |
+| StatisticsMaxSamples               | The maximum number of statistics transfer rate samples to add additional weight to the remaining time calculation.                                   | 8                                                  |
+| TempDirectory                      | The directory used for temp storage.                                                                                                                 | Current user profile temp path (IE %TEMP%)         |
 
 ***Note:** API users are strongly encouraged to set `ApplicationName` because the value is included within all log entries.*
 
@@ -929,12 +1275,14 @@ TAPI supports Relativity Logging and, specifically, the `ILog` object. There may
 
 Relativity Logging is the default logging implementation if none is explicitly provided. The next example demonstrates how a Relativity Logging `ILog` object is specified when creating the `RelativityTransferHost` object.
 
+
 ```csharp
 ILog log; // Retrieved or constructed via Relativity Logging.
 using (ITransferLog log = new RelativityTransferLog(log))
 using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo, log))
 {}
 ```
+
 
 ***Notes:*** 
 
@@ -947,6 +1295,7 @@ When a transfer request is made, all log entries are prefixed with useful proper
 
 * ApplicationName (via `GlobalSettings`)
 * ClientRequestId (via `ITransferRequest`)
+* JobId (via `ITransferRequest`)
 * Direction (via `ITransferRequest`)
 
 ***Note:** The `ApplicationName` should be set to an appropriate value. The value defaults to TAPI if not specified.*
@@ -961,8 +1310,9 @@ All `DateTime` objects values used by TAPI are in local time.
 
 
 ### Binding redirect for NewtonSoft.Json
-
 Relativity and the APIs consumed by Relativity use several different versions of the Newtonsoft.Json library, which can cause assembly version conflict at build time. This is the recommended assembly binding redirect to Newtonsoft.Json version 6.0.0.0 to add to the consuming application (`app.config`) or web (`web.config`) configuration file. It ensures that almost any version of `Newtonsoft.Json` will work with the TAPI:
+
+
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -973,9 +1323,24 @@ Relativity and the APIs consumed by Relativity use several different versions of
             <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">             
                  <dependentAssembly>
                  <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
-                       <bindingRedirect oldVersion="0.0.0.0-9.0.0.0" newVersion="6.0.0.0" />
+                       <bindingRedirect oldVersion="0.0.0.0-10.0.0.0" newVersion="6.0.0.0" />
                  </dependentAssembly>
            </assemblyBinding>
       </runtime>
 </configuration>
 ```
+
+## Long Path Support in TAPI
+Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
+
+The maximum path length now depends on the chosen transfer client.  These limits apply for both the source and full target path lengths.
+
+| Transfer Client                | Maximum supported path length                       |
+|--------------------------------|-----------------------------------------------------|
+| File Share                     | *N/A*                                               |
+| Aspera                         | 470                                                 |
+| HTTP                           | 222                                                 |
+
+If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. And finally, when using the HTTP transfer client, the limit is 222. HTTP is limited to 222 characters due to a current limitation with our enumeration process, which cannot currently account for how the HTTP transfer client renames transferred files using a 36-character GUID. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file will not be transferred.
+
+As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This global setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and will not be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
