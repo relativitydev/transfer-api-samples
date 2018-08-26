@@ -4,30 +4,20 @@ You can use the Transfer API (TAPI) to build application components that connect
 ***Important!**  We're providing TAPI as a preview release so that you can evaluate it and provide us with feedback. The preview release offers a functional API, which will continue to undergo minor contract changes and further enhancements.*
 
 
-## Built-in RCC package and transfer support
-The TAPI supports the use of containerization using Relativity Collection Container (RCC) files. The .rcc extension indicates a file type with a proprietary format for persisting data to SQLite databases. These sidecar databases can store any type of data using JSON. They are encrypted to secure their contents. They act as protective containers ensuring that you control any modifications to the original native files and their associated metadata during transfers. 
+## Core TAPI features
+The TAPI includes the following core features:
 
-The TAPI improves overall transfer process by containerizing multiple small files, which prevents increased overhead and performance degradation. It also improves performance by using a service to quickly extract content from the RCC files. 
-
-You can find sample code that illustrates how to compress data in RCC files and then extract them in the Relativity.Transfer.Package.Zip.Sample folder. It contains a project that illustrates how to perform the following tasks:
-
-* Create a sample ZIP package library that uses classes from the System.IO.Compression namespace in the .NET framework to create ZIP archives.
-* Stream the file to server and monitor its progress.
-* Extract contents from the Zip archive.
-
-
-## Additional TAPI features
-The TAPI also includes the following features:
-
-* Only asynchronous methods
+* Async/await design
 * Thread-safe
 * Transfers in a single request or by a request job
+* Massive file counts and low resources
 * Cancellation using CancellationToken
-* Progress using context object
-* Diagnostics (for example, compatibility check)
+* Progress using a context object
+* Diagnostics (for example, compatibility and connection checks)
 * Relativity user authentication
 * Built-in RCC package/transfer support
 * Logging with the Relativity logging framework and [Serilog](https://serilog.net/)
+
 
 We are  providing a sample solution to help you get started developing your own transfer applications.
 
@@ -35,10 +25,11 @@ We are  providing a sample solution to help you get started developing your own 
 ## Integrations
 As of this writing, TAPI is now integrated within the following components and applications:
 
-* RDC/WinEDDS/IAPI/RIP/Invariant
-* EnForce (Guidance/OpenText)
-* Relativity One Staging Explorer (ROSE)
-* R1 Import via Azure Functions
+* Remote Desktop Client
+* Import API
+* Relativity One Staging Explorer
+* Transfer CLI
+* R1 File Migrator CLI
 
 
 ## Target Framework
@@ -52,44 +43,33 @@ As of this writing, TAPI is now integrated within the following components and a
 ***Extracted** under %TEMP%/Relativity-Transfer/Aspera-Runtime/bin**
 
 
-## Dependencies
-The following NuGet packages are required by the TAPI solution:
-
-* aspera.faspnative (native Aspera engine)
-* dtx.rcc.client32.win (32-bit RCC API)
-* dtx.rcc.client64.win (64-bit RCC API)
-* Newtonsoft.Json
-* Polly
-* ssh.net
-* relativity.faspmanager (Aspera API)
-* Relativity.Logging
-* Relativity.Logging.Interfaces
-
-***Note:** The RCC packages are only required when using the RCC package library API's.**
-
-To obtain TAPI libraries, contact [Relativity support](mailto:support@relativity.com).
-
-
-## Components
-The Transfer API consists of the following key components:
-
-* **Relativity.Transfer.IRelativityTransferHost** - the host where files are uploaded and downloaded.
-* **Relativity.Transfer.ITransferClient** - the operations to perform transfers when the source paths **are** immediately known.
-* **Relativity.Transfer.ITransferJob** - the job that performs file uploads and downloads when the source paths **are not** immediately known.
-* **Relativity.Transfer.TransferContext** - the context for transfer request operations, including relevant events and basic configuration.
-* **Relativity.Transfer.TransferPath** - the path that details the source, target, and optional filename properties.
-
-
 ## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
 
 * Aspera
 * File Share
 * HTTP
+* Azure Blob
+* Azure Files
+
+
+## Long Path Support in TAPI
+Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
+
+The maximum path length now depends on the chosen transfer client.  These limits apply for both the source and full target path lengths.
+
+| Transfer Client                | Maximum supported path length                       |
+|--------------------------------|-----------------------------------------------------|
+| File Share                     | *N/A*                                               |
+| Aspera                         | 470                                                 |
+| HTTP                           | 222                                                 |
+
+If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. And finally, when using the HTTP transfer client, the limit is 222. HTTP is limited to 222 characters due to a current limitation with our enumeration process, which cannot currently account for how the HTTP transfer client renames transferred files using a 36-character GUID. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file will not be transferred.
+
+As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This global setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and will not be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
 
 
 ## Sample solution
-
 The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications. The solution already includes all required references.
 
 You can also run the solution to see a transfer in action. Prerequisites for running the solution:
@@ -163,7 +143,6 @@ public static void Main(string[] args)
 
 
 ### Subscribing to transfer events
-
 `ExecuteUploadDemo` begins with instantiation of the `TransferContext` object. `TransferContext` is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.  
 
 ```csharp
@@ -302,10 +281,10 @@ The next sections cover TAPI usage including:
 * [ITransferResult](#itransferresult)
 * [TransferStatus](#transferstatus)
 * [ITransferJob](#itransferjob)
-* [Local and Remote Enumeration](#local-and-remote-enumeration)
 * [Transfer via Request](#transfer-via-request)
-* [Aspera transfer requests](#aspera-transfer-requests)
 * [Transfer via Job](#transfer-via-job)
+* [Targeting File Shares](#targeting-file-shares)
+* [Local and Remote Enumeration](#local-and-remote-enumeration)
 * [Change Job Data Rate](#change-job-data-rate)
 * [Transfer Events and Statistics](#transfer-events-and-statistics)
 * [Transfer Application Performance Monitoring and Metrics](#transfer-application-performance-monitoring-and-metrics)
@@ -320,31 +299,46 @@ The next sections cover TAPI usage including:
 ### RelativityConnectionInfo
 The first thing you must do is construct a `RelativityConnectionInfo` object, which requires the following:
 
-| Property        | Description |
-| --------------- |-----------------------------------------------------------------------------------|
-| Host            | The Relativity URL. |
-| Credential      | The Relativity credential used to authenticate HTTP/REST API calls. |
-| WorkspaceId     | The artifact identifier used to retrieve workspace specific transfer information. |
+| Property        | Description                                                                                                                    |
+| --------------- |--------------------------------------------------------------------------------------------------------------------------------|
+| Host            | The Relativity URL.                                                                                                            |
+| Credential      | The Relativity credential used to authenticate HTTP/REST API calls.                                                            |
+| WorkspaceId     | The workspace artifact identifier used to auto-configure the request with file share, credential, and other transfer settings. |
+
+***Note:**  The workspace artifact identifier can be set to `Workspace.AdminWorkspaceId` if the workspace is unknown or the transfer is manually configured. See [Targeting File Shares](#targeting-file-shares) for more details.*
 
 The following example uses basic username/password credentials.
 
 ```csharp
+// This will eventually use the specified workspace to auto-configure the transfer.
 const int WorkspaceId = 111111;
 var connectionInfo = new RelativityConnectionInfo(
     new Uri("http://localhost/Relativity"),
     new BasicAuthenticationCredential("relativity.admin@relativity.com", "MyUbreakablePassword777!"),
     WorkspaceId);
 ```
+
+
 When using an OAUTH2 client to authenticate, the bearer token is provided instead.
 
 ```csharp
 const int WorkspaceId = 111111;
+// This will eventually use the specified workspace to auto-configure the transfer.
 var connectionInfo = new RelativityConnectionInfo(
     new Uri("http://localhost/Relativity"),
     new BearerTokenCredential(bearerToken),
     WorkspaceId);
 ```
 
+
+When manually configuring the transfer, do **not** pass the workspace artifact. 
+
+```csharp
+// This will NOT auto-configure the transfer.
+var connectionInfo = new RelativityConnectionInfo(
+    new Uri("http://localhost/Relativity"),
+    new BasicAuthenticationCredential("relativity.admin@relativity.com", "MyUbreakablePassword777!"));
+```
 
 ### RelativityTransferHost
 Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block.
@@ -367,7 +361,7 @@ Before you can create a client, you have to provide a `ClientConfiguration` inst
 | Client                     | The transfer client unique identifier. This is automatically set when the transfer client is constructed via best-fit strategy.                                                                                                             | WellKnownTransferClient.Unassigned |
 | ClientId                   | The well-known transfer client value. This is automatically set when the transfer client is constructed via best-fit strategy.                                                                                                              | Guid.Empty                         |
 | CookieContainer            | The HTTP cookie container.                                                                                                                                                                                                                  | new instance                       |
-| Credential                 | The client specific object used for authentication purposes and should only be set when overriding the auto-configuration mechanism.                                                                                                        | null                               |
+| Credential                 | The optional credential used in place of the workspace file share credential. Only specify the `Credential` or `TargetFileShare` property but not both.                                                                                  | null                               |
 | FileNotFoundErrorsDisabled | Enable or disable whether to treat missing files as warnings or errors.                                                                                                                                                                     | false                              |
 | FileNotFoundErrorsRetry    | Enable or disable whether to retry missing file errors.                                                                                                                                                                                     | true                               |
 | FileSystemChunkSize        | The size of each byte chunk transferred over file-system based transfer clients.                                                                                                                                                            | 16KB                               |
@@ -380,15 +374,18 @@ Before you can create a client, you have to provide a `ClientConfiguration` inst
 | MinDataRateMbps            | The minimum data rate in Mbps unit. This isn't supported by all clients but considered a hint to clients that support configurable data rates.                                                                                              | 0                                  |
 | OverwriteFiles             | Enable or disable whether to overwrite files at the target path. The transfer job will fail when this option is disabled and target paths already exist.                                                                                    | true                               |
 | PermissionErrorsRetry      | Enable or disable whether to retry transferring files that fail due to permission or file access errors.          								                                                                                           | false  						    |
-| PreCalculateJobSize        | Enable or disable whether to pre-calculate the file/byte totals within the job to improve progress accuracy. This feature is deprecated and local/remote path enumeration should be used instead.                                           | false                              |
+| PreCalculateJobSize        | Enable or disable whether to pre-calculate the file/byte totals within the job to improve progress accuracy. This feature is deprecated and [Local and Remote Enumeration](#local-and-remote-enumeration) should be used instead.           | false                              |
 | PreserveDates              | Enable or disable whether to preserve file created, modified, and access times.                                                                                                                                                             | true                               |
 | SupportCheckPath           | The optional path used during auto-configuration to allow each potential client perform additional support checks. This is typically used when a client is supported but may not have access or proper configuration to the specified path. | null                               |
 | TargetDataRateMbps         | The target data rate in Mbps unit. This isn't supported by all clients but considered a hint to clients that support configurable data rates.                                                                                               | 100 Mbps                           |
+| TargetFileShare            | The optional target file share used in place of the workspace file share. Only specify the `Credential` or `TargetFileShare` property but not both.                                                                                      | null                                |
 | TransferEmptyDirectories   | Enable or disable whether to transfer empty directories.                                                                                                                                                                                    | false                              |       
 | TransferLogDirectory       | The directory where transfer clients can store more detailed transfer logs separate from standard logging.                                                                                                                                  | null                               |
-| ValidateSourcePaths        | Enable or disable whether to validate source paths before adding to the transfer job queue. When enabled, this is an expensive operation on datasets containing a large number of small files.                                              | true                               |
+| ValidateSourcePaths        | Enable or disable whether to validate source paths before adding to the transfer job queue. When enabled, this can be an expensive operation if the dataset contains a large number of files.                                               | true                               |
+
 
 ***Note:** API users are strongly encouraged to set the `TransferLogDirectory` because clients that support this feature typically write more detailed diagnostic information into their custom log files.*
+
 
 ### AsperaClientConfiguration
 The Aspera transfer engine defines a large number of properties to customize the transfer request. As a result, the `AsperaClientConfiguration` class object is more extensive compared to any client and special care must be taken when changing or deviating from some of the default values.
@@ -466,7 +463,6 @@ using (ITransferClient client = await host.CreateClientAsync(new ClientConfigura
 
 
 ### ITransferClientStrategy
-
 When using the dynamic transfer client, a strategy design pattern is used to determine the order in which clients are checked for compatibility. Out of the box, the **default strategy** is as follows:
 
 * FileShare
@@ -495,7 +491,6 @@ Given a transfer client object, the `SupportCheckAsync` method is called to perf
 The following example verifies the file share associated with the configured workspace is defined and accessible.
 
 ```csharp
-using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo))
 using (ITransferClient client = host.CreateClient(new FileShareClientConfiguration()))
 {
     ISupportCheckResult result = await client.SupportCheckAsync();
@@ -633,7 +628,6 @@ Once the transfer is complete, the `ITransferResult` object is returned and prov
 ### FileTransferHint
 This enumeration provides hints to better configure or optimize the transfer request.
 
-
 | Name                | Description |
 | ------------------- | ------------------------------------- |
 | Natives             | The request involves transferring native files. |
@@ -681,65 +675,10 @@ using (ITransferClient client = host.CreateClient(configuration))
 }
 ```
 
-
-### Aspera transfer requests
-The TAPI supports transferring data to a workspace in Aspera. You can perform these transfers by using an AsperaUncPathResolver object, which transforms UNC paths to native Aspera paths. 
-
-
-#### Document root levels in RelativityOne file shares 
-To successfully transfer data to Aspera,  use the appropriate path for a  RelativityOne file share. This section provides a brief overview of the structure used for these file paths. You first  need to identify the root of the file share and document root level, which is the number of levels that a UNC path is from the root. For example, the following paths illustrate a typical RelativityOne file share:
-
-```csharp
-\\files\T002\(root)
-\\files\T002\BCPPath\
-\\files\T002\files\
-```
-To transform a UNC path to native Aspera path, instantiate a new AsperaUncPathResolver object by passing it:
-
-* A UNC path.
-* The number of levels the UNC path is from the root.
-
-For example, you have documents located at  \\files\T002\files\sample.txt. To transform this UNC path, instantiate the AsperaUncPathResolver object with the UNC path and the document root level as follows:
- ```csharp
-new AsperaUncPathResolver(@�\\files\T002\files\�, 1);
-```
-The object resolves this path to the native Aspera file path: /files/sample.txt. It uses the following process to complete this transformation:
-
-* Truncates the path by removing one level from the UNC path. The path \\files\T002\files\ becomes \\files\T002.
-* Removes  \\files\T002 from the original path to finalize the native Aspera path as  \files\sample.txt.
-* Replaces backslashes with forward slashes:  /files/sample.txt.
-
-
-#### Aspera download and upload transfer requests 
-To make a transfer request, you need to resolve _remote_ or _server-side_ paths, depending on whether your transfer is uploading or downloading data. Specify the path resolvers based on your transfer direction:
-
-* SourcePathResolver - use this object for downloading.
-* TargetPathResolver - use this object for uploading.
-
-When you make the request call, pass a variable for the document root level to the path resolver in the transfer request. In addition, you can get the value for the DefaultFileShareUncPath argument  from the workspace object after you have created a Client object through the TAPI:
-
-```csharp
-var workspace = await client.GetWorkspaceAsync();
-```
-
-The following code sample illustrates a download request:
-
-```csharp
-TransferRequest downloadRequest =  TransferRequest.ForDownload(downloadSourcePaths, downloadTargetPath, context);
-
-downloadRequest.SourcePathResolver = new AsperaUncPathResolver(workspace.DefaultFileShareUncPath, docRootLevels);
-```
-
-The following code sample illustrates an upload request:
-
-```csharp
-TransferRequest uploadRequest = TransferRequest.ForUpload(uploadSourcePaths, uploadTargetPath, context);
-uploadRequest.TargetPathResolver = new AsperaUncPathResolver(workspace.DefaultFileShareUncPath, docRootLevels);
-```
-
+This is an ideal approach to take if the number of files is **small** and the required functionality is minimal.
 
 ### Transfer via job
-If the **list of source paths is unknown**, you want to avoid calling `TransferAsync` one file at a time. High-speed clients like Aspera require a significant amount of overhead to setup the transfer request and performance would suffer significantly. To address this scenario, the `ITransferJob` object can be constructed via the client instance. The general idea is to construct a job, continually add transfer paths to the queue as they become known, and then await completion.
+If the **list of source paths is unknown**, you want to avoid calling `TransferAsync` one file at a time. High-speed clients like Aspera require a significant amount of overhead to setup the transfer request and performance would suffer significantly. To address this scenario, the `ITransferJob` object can be constructed via the client instance. The general idea is to construct a job, continually add transfer paths to the queue as they become known, and then await completion. Beyond large transfers, the `ITransferJob` object provides several other functional advantages such as changing the data rate at runtime and a predictable object lifecycle.
 
 It's understood that files are transferred as soon as they're added to the job queue.
 
@@ -763,6 +702,125 @@ using (ITransferJob job = await client.CreateJobAsync(request))
 ```
 
 ***Note:** Multiple jobs can be created; however, bandwidth constraints can lead to transfer errors.*
+
+
+### Targeting File Shares
+When the `IRelativityTransferHost` object is constructed, the API user is required to supply a `RelativityConnectionInfo` instance. This object includes the workspace artifact identifier and is used by transfer clients to setup the transfer using the default file repository. This is  known as auto-configuration and is ideal for API users because it simplifies the transfer setup process.
+
+Although many Relativity applications are geared around the workspace, there are situations where the workspace may not be known, does not exist, or the application simply wants to specify a target file share. For more advanced transfer scenarios, the `IFileStorageSearch` API is used to retrieve file shares and the `ClientConfiguration` object is assigned the target file share.
+
+
+#### Resource Pools and Security
+The workspace represents both a functional and security boundary required by many Relativity API's. The resource pool is the set of servers and file repositories associated with the workspace. Bypassing workspaces and querying these objects directly represents a security risk and, as such, requires `View Admin Repository` Admin Operations rights. In short, the API user must have **Admin Rights** to search for *all* file shares or specify *non-workspace* search criteria.
+
+#### RelativityFileShare
+This object represents a standard file share resource server and includes several RelativityOne cloud-specific properties.
+
+| Property           | Description                                                                                                                                                                       |
+| ------------------ |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ArtifactId         | The file share resource artifact identifier.     |
+| AsperaCredentials  | The Aspera credentials for both storage authentication and REST API file management support. This is only assigned when `CloudInstance` is `true`. |
+| CloudInstance      | The value indicating whether the Relativity instance is running within the RelativityOne cloud environment. |
+| Credential         | The credential used for storage authentication. This is only assigned when `CloudInstance` is `true`. |
+| DocRoot            | The path within the configured file share resource where all transfers are rooted. This is only assigned when `CloudInstance` is `true`. |
+| Error              | The error message assigned when attempting to setup or configure the storage. |
+| Name               | The file share name. |
+| Number             | The file storage logical number. This is only assigned when `CloudInstance` is `true`. |
+| ResourceServerType | The resource server type. |
+| TenantId           | The tenant identifier associated with this file storage. This is only assigned when `CloudInstance` is `true`. |
+| Url                | The URL that represents the file storage location or path. |
+
+
+#### File Storage Search
+The `IFileStorageSearch` API is constructed from the `IRelativityTransferHost` object and used to search for and identify file shares. Similar to other TAPI methods, a context object provides additional configuration details. Since none of the context properties are assigned, the example below searches for all file shares.
+
+```csharp
+// In this example, the workspace is NOT supplied to RelativityConnectionInfo.
+RelativityConnectionInfo connectionInfo = new RelativityConnectionInfo(host, credential);
+using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo))
+{
+    IFileStorageSearch fileStorageSearch = host.CreateFileStorageSearch();
+    FileStorageSearchContext context = new FileStorageSearchContext();
+    FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
+    foreach (RelativityFileShare fileShare in results.FileShares)
+    {
+        Console.WriteLine("File share name: " + fileShare.Name);
+        Console.WriteLine("File share path: " + fileShare.Url);
+    }
+}
+```
+
+
+#### Search Options
+The search criteria is exposed through the `FileStorageSearchContext` object. **Admin rights are required for all non-workspace search criteria** and includes the following search options:
+
+| Property                           | Description                                                                                                                                                                                                      |
+| ---------------------------------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ResourcePoolCondition              | The search is filtered by a resource pool condition.                                                                                       |
+| ResourcePoolName                   | The search is filtered by a resource pool name.                                                                                                                                                                  |
+| ResourceServerCondition            | The search is filtered by a resource server condition.                                                                                      |
+| ResourceServerId                   | The search is filtered by a resource server artifact identifier.                                                                                                                                                 |
+| WorkspaceCondition                 | The search is filtered by a workspace condition.                                                                                            |
+| WorkspaceId                        | The search is filtered by a workspace artifact identifier. **All file shares can be retrieved by setting this value to `Workspace.AdminWorkspaceId` but searching by admin workspace requires admin rights.** |
+
+***Note:** All condition search options support standard Relativity query operators.*
+
+
+The following example uses the context to search for all files shares within the specified workspace:
+
+```csharp
+// This does NOT require admin rights.
+FileStorageSearchContext context = new FileStorageSearchContext { WorkspaceId = 1123815 };
+FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
+```
+
+The following example uses the context to search for all files shares within any resource pool that matches the specified condition.
+
+```csharp
+// This DOES require admin rights.
+FileStorageSearchContext context = new FileStorageSearchContext { ResourcePoolCondition = "'Name' == 'default'" };
+FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
+```
+
+The following example uses the context to search for all files shares within the instance:
+
+```csharp
+// This DOES require admin rights.
+FileStorageSearchContext context = new FileStorageSearchContext { WorkspaceId = Workspace.AdminWorkspaceId };
+FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
+```
+
+
+#### Search Results
+The `SearchAsync` returns a `FileStorageSearchResults` object to expose all search results.
+
+| Property                           | Description                                                                                                                                                                                                      |
+| ---------------------------------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BulkLoadFileShares                 | The read-only collection of the valid bulk load related file shares.                                        |
+| ConnectionInfo                     | The Relativity connection information used to obtain the results.                                           |
+| CloudInstance                      | The value indicating whether the Relativity instance is running within the RelativityOne cloud environment. |
+| FileShares                         | The read-only collection of the valid file shares.                                                          |
+
+
+This object provides helper methods to search for file shares by artifact or UNC path. The following example demonstrates retrieving the file share by the specified artifact identifier:
+
+```csharp
+FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
+const int FileShareArtifactID = 1049366;
+RelativityFileShare fileShare = results.GetRelativityFileShare(FileShareArtifactID);
+```
+
+
+#### Specify a File Share
+Given a file share object, the target file share is assigned within the `ClientConfiguration` object.
+
+```csharp
+RelativityFileShare fileShare = results.FileShares.FirstOrDefault();
+ClientConfiguration configuration = new ClientConfiguration();
+configuration.TargetFileShare = fileShare;
+```
+
+***Note:** When specifying a target file share and using **remote** UNC paths, it's imperative for the UNC paths to share the same base path as the file share. This can be problematicc for transfer clients like Aspera that do not support native UNC paths and reinforces why relative paths should always be favored.*
 
 
 ### Local and Remote Enumeration
@@ -1329,18 +1387,3 @@ Relativity and the APIs consumed by Relativity use several different versions of
       </runtime>
 </configuration>
 ```
-
-## Long Path Support in TAPI
-Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
-
-The maximum path length now depends on the chosen transfer client.  These limits apply for both the source and full target path lengths.
-
-| Transfer Client                | Maximum supported path length                       |
-|--------------------------------|-----------------------------------------------------|
-| File Share                     | *N/A*                                               |
-| Aspera                         | 470                                                 |
-| HTTP                           | 222                                                 |
-
-If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. And finally, when using the HTTP transfer client, the limit is 222. HTTP is limited to 222 characters due to a current limitation with our enumeration process, which cannot currently account for how the HTTP transfer client renames transferred files using a 36-character GUID. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file will not be transferred.
-
-As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This global setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and will not be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
