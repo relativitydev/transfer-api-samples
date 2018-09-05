@@ -75,24 +75,24 @@
       <HintPath>..\packages\Relativity.Logging.Interfaces.9.4.320\lib\net462\Relativity.Logging.Interfaces.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Relativity.Transfer.Client, Version=4.2.3.32, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\relativity.transfer.client.4.2.3\lib\net462\Relativity.Transfer.Client.dll</HintPath>
+    <Reference Include="Relativity.Transfer.Client, Version=4.2.6.43, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\relativity.transfer.client.4.2.6\lib\net462\Relativity.Transfer.Client.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Relativity.Transfer.Client.Aspera, Version=4.2.3.32, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\relativity.transfer.client.4.2.3\lib\net462\Relativity.Transfer.Client.Aspera.dll</HintPath>
+    <Reference Include="Relativity.Transfer.Client.Aspera, Version=4.2.6.43, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\relativity.transfer.client.4.2.6\lib\net462\Relativity.Transfer.Client.Aspera.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Relativity.Transfer.Client.Core, Version=4.2.3.32, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\relativity.transfer.client.4.2.3\lib\net462\Relativity.Transfer.Client.Core.dll</HintPath>
+    <Reference Include="Relativity.Transfer.Client.Core, Version=4.2.6.43, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\relativity.transfer.client.4.2.6\lib\net462\Relativity.Transfer.Client.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Relativity.Transfer.Client.FileShare, Version=4.2.3.32, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\relativity.transfer.client.4.2.3\lib\net462\Relativity.Transfer.Client.FileShare.dll</HintPath>
+    <Reference Include="Relativity.Transfer.Client.FileShare, Version=4.2.6.43, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\relativity.transfer.client.4.2.6\lib\net462\Relativity.Transfer.Client.FileShare.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Relativity.Transfer.Client.Http, Version=4.2.3.32, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\relativity.transfer.client.4.2.3\lib\net462\Relativity.Transfer.Client.Http.dll</HintPath>
+    <Reference Include="Relativity.Transfer.Client.Http, Version=4.2.6.43, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\relativity.transfer.client.4.2.6\lib\net462\Relativity.Transfer.Client.Http.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Renci.SshNet, Version=2016.0.0.0, Culture=neutral, PublicKeyToken=1cee9f8bde3db106, processorArchitecture=MSIL">
@@ -104,8 +104,10 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Console2.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="AutoDeleteDirectory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
@@ -114,7 +116,16 @@
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
-    <None Include="Resources\Sample.pdf">
+    <None Include="Resources\EDRM-Sample2.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Resources\EDRM-Sample3.doc">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Resources\EDRM-Sample4.xlsx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Resources\EDRM-Sample5.pptx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -134,6 +145,9 @@
     <Content Include="LogConfig.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="Resources\EDRM-Sample1.JPG">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -782,6 +782,14 @@ FileStorageSearchContext context = new FileStorageSearchContext { ResourcePoolCo
 FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
 ```
 
+The following example uses the context to search for the the file share that matches the specified resource server.
+
+```csharp
+// This DOES require admin rights.
+FileStorageSearchContext context = new FileStorageSearchContext { ResourceServerId = 1049366 };
+FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
+```
+
 The following example uses the context to search for all files shares within the instance:
 
 ```csharp
@@ -1313,6 +1321,7 @@ A number of common but optional settings are exposed by the `GlobalSettings` sin
 | MaxAllowedTargetDataRateMbps       | The maximum target data rate, in Mbps units, allowed by the transfer API.                                                                            | 600                                                |
 | MaxBytesPerBatch                   | The maximum number of bytes per batch. This is only applicable when transferring via serialized batches.                                             | 100GB                                              |
 | MaxFilesPerBatch                   | The maximum number of files per batch. This is only applicable when transferring via serialized batches.                                             | 50,000                                             |
+| MemoryProtectionScope              | The memory protection scope applied to all data protection API (DPAPI) usage.                                                                        | MemoryProtectionScope.SameProcess                  |
 | NodePageSize                       | The default page size when making Aspera Node REST API calls.                                                                                        | 100                                                |
 | PluginDirectory                    | The directory where all plugins are located.                                                                                                         | Working directory                                  |
 | PluginFileNameFilter               | The file name filter to limit which files are searched for plugins.                                                                                  | *.dll                                              |
@@ -1324,6 +1333,7 @@ A number of common but optional settings are exposed by the `GlobalSettings` sin
 | StatisticsLogIntervalSeconds       | The interval, in seconds, that transer statistics are logged.                                                                                        | 2.0                                                |
 | StatisticsMaxSamples               | The maximum number of statistics transfer rate samples to add additional weight to the remaining time calculation.                                   | 8                                                  |
 | TempDirectory                      | The directory used for temp storage.                                                                                                                 | Current user profile temp path (IE %TEMP%)         |
+| ValidateResolvedPaths              | Enable or disable whether to throw a `TransferException` if a path cannot be resolved by an `IRemotePathResolver` instance.                      | true                                               |
 
 ***Note:** API users are strongly encouraged to set `ApplicationName` because the value is included within all log entries.*
 
