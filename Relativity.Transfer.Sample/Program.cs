@@ -8,16 +8,21 @@ namespace Relativity.Transfer.Sample
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Linq;
-    using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
 
     public class Program
     {
-        private static readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-        private static readonly IFileSystemService fileSystemService = new FileSystemService();
+        /// <summary>
+        /// This object provides cancellation functionality.
+        /// </summary>
+        private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+
+        /// <summary>
+        /// This object provides standard and extended I/O and file system functionality.
+        /// </summary>
+        private static readonly IFileSystemService FileSystemService = new FileSystemService();
 
         public static void Main(string[] args)
         {
@@ -41,7 +46,7 @@ namespace Relativity.Transfer.Sample
                                 exitCode = 0;
                             }
                         },
-                    cancellationTokenSource.Token).GetAwaiter().GetResult();
+                    CancellationTokenSource.Token).GetAwaiter().GetResult();
             }
             catch (TransferException e)
             {
@@ -70,36 +75,36 @@ namespace Relativity.Transfer.Sample
             // This approach can be useful when the number of files is small and when all paths are known.
             using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
             {
-                // Use the workspace default file share to setup the target paths.
+                // Use the workspace default file share to setup the target path.
                 RelativityFileShare fileShare = await GetWorkspaceDefaultFileShareAsync(host).ConfigureAwait(false);
-                string uploadTargetPath = Path.Combine(fileShare.Url, "UploadDirectDataset-" + Environment.MachineName);
+                string uploadTargetPath = FileSystemService.CombineUnc(fileShare.Url, "UploadDirectDataset-" + Environment.MachineName);
                 TransferPath localSourcePath = new TransferPath
                 {
                     PathAttributes = TransferPathAttributes.File,
-                    SourcePath = fileSystemService.Combine(fileSystemService.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG"),
+                    SourcePath = FileSystemService.Combine(FileSystemService.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG"),
                     TargetPath = uploadTargetPath
                 };
 
-                // Create a transfer request and upload the local sample dataset to the target remote path.
+                // Create a transfer request and upload a single local file to the remote target path.
                 Console2.WriteLine();
                 Console2.WriteStartHeader("Basic Transfer - Upload");
                 TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, uploadTargetPath);
                 uploadRequest.Application = "Github Sample";
                 uploadRequest.Name = "Basic Upload Sample";
                 Console2.WriteLine("Basic upload transfer started.");
-                ITransferResult uploadResult = await client.TransferAsync(uploadRequest, cancellationTokenSource.Token).ConfigureAwait(false);
+                ITransferResult uploadResult = await client.TransferAsync(uploadRequest, CancellationTokenSource.Token).ConfigureAwait(false);
                 Console2.WriteLine("Basic upload transfer completed.");
                 DisplayTransferResult(uploadResult);
                 Console2.WriteEndHeader();
 
-                // Create a transfer request to download the sample dataset to the target local path.
+                // Create a transfer request to download a single remote file to the local target path.
                 Console2.WriteLine();
                 Console2.WriteStartHeader("Basic Transfer - Download");
                 string downloadTargetPath = directory.Path;
                 TransferPath remotePath = new TransferPath
                 {
                     PathAttributes = TransferPathAttributes.File,
-                    SourcePath = fileSystemService.CombineUnc(uploadTargetPath, "EDRM-Sample1.JPG"),
+                    SourcePath = FileSystemService.CombineUnc(uploadTargetPath, "EDRM-Sample1.JPG"),
                     TargetPath = downloadTargetPath
                 };
 
@@ -107,7 +112,7 @@ namespace Relativity.Transfer.Sample
                 downloadRequest.Application = "Github Sample";
                 downloadRequest.Name = "Basic Download Sample";
                 Console2.WriteLine("Basic download transfer started.");
-                ITransferResult downloadResult = await client.TransferAsync(downloadRequest, cancellationTokenSource.Token).ConfigureAwait(false);
+                ITransferResult downloadResult = await client.TransferAsync(downloadRequest, CancellationTokenSource.Token).ConfigureAwait(false);
                 Console2.WriteLine("Basic download transfer completed.");
                 DisplayTransferResult(downloadResult);
                 Console2.WriteEndHeader();
@@ -120,7 +125,7 @@ namespace Relativity.Transfer.Sample
             {
                 // Use the specified file share to setup the transfer.
                 RelativityFileShare fileShare = await GetFileShareAsync(host).ConfigureAwait(false);
-                string uploadTargetPath = Path.Combine(fileShare.Url, "UploadJobDataset-" + Environment.MachineName);
+                string uploadTargetPath = FileSystemService.CombineUnc(fileShare.Url, "UploadJobDataset-" + Environment.MachineName);
                 IList<TransferPath> localSourcePaths = await GetLocalSourcePathsAsync(client, uploadTargetPath).ConfigureAwait(false);
 
                 // This approach is required when the number of files is 1M+ or when the paths are obtained through some type of reader.
@@ -132,15 +137,15 @@ namespace Relativity.Transfer.Sample
                 TransferRequest uploadRequest = TransferRequest.ForUploadJob(context);
                 uploadRequest.Application = "Github Sample";
                 uploadRequest.Name = "Advanced Upload Sample";
-                using (ITransferJob job = await client.CreateJobAsync(uploadRequest, cancellationTokenSource.Token).ConfigureAwait(false))
+                using (ITransferJob job = await client.CreateJobAsync(uploadRequest, CancellationTokenSource.Token).ConfigureAwait(false))
                 {
                     Console2.WriteLine("Advanced upload started.");
 
                     // Paths added to the async job are transferred immediately.
-                    await job.AddPathsAsync(localSourcePaths, cancellationTokenSource.Token).ConfigureAwait(false);
+                    await job.AddPathsAsync(localSourcePaths, CancellationTokenSource.Token).ConfigureAwait(false);
 
                     // Await completion of the job.
-                    ITransferResult result = await job.CompleteAsync(cancellationTokenSource.Token).ConfigureAwait(false);
+                    ITransferResult result = await job.CompleteAsync(CancellationTokenSource.Token).ConfigureAwait(false);
                     Console2.WriteLine("Advanced upload completed.");
                     DisplayTransferResult(result);
                     Console2.WriteEndHeader();
@@ -152,15 +157,15 @@ namespace Relativity.Transfer.Sample
                 TransferRequest downloadRequest = TransferRequest.ForDownloadJob(context);
                 downloadRequest.Application = "Github Sample";
                 downloadRequest.Name = "Advanced Download Sample";
-                using (ITransferJob job = await client.CreateJobAsync(downloadRequest, cancellationTokenSource.Token).ConfigureAwait(false))
+                using (ITransferJob job = await client.CreateJobAsync(downloadRequest, CancellationTokenSource.Token).ConfigureAwait(false))
                 {
                     Console2.WriteLine("Advanced download started.");
                     string downloadTargetPath = directory.Path;
                     IEnumerable<TransferPath> remotePaths = GetRemotePaths(localSourcePaths, downloadTargetPath, uploadTargetPath);
-                    await job.AddPathsAsync(remotePaths, cancellationTokenSource.Token).ConfigureAwait(false);
+                    await job.AddPathsAsync(remotePaths, CancellationTokenSource.Token).ConfigureAwait(false);
 
                     // Await completion of the job.
-                    ITransferResult result = await job.CompleteAsync(cancellationTokenSource.Token).ConfigureAwait(false);
+                    ITransferResult result = await job.CompleteAsync(CancellationTokenSource.Token).ConfigureAwait(false);
                     Console2.WriteLine("Advanced download completed.");
                     DisplayTransferResult(result);
                     Console2.WriteEndHeader();
@@ -230,7 +235,7 @@ namespace Relativity.Transfer.Sample
             {
                 // The CreateClientAsync method chooses the best client at runtime.
                 Console2.WriteLine("TAPI is choosing the best transfer client...");
-                client = await host.CreateClientAsync(configuration, cancellationTokenSource.Token).ConfigureAwait(false);
+                client = await host.CreateClientAsync(configuration, CancellationTokenSource.Token).ConfigureAwait(false);
             }
             else
             {
@@ -253,11 +258,11 @@ namespace Relativity.Transfer.Sample
         {
             Console2.WriteLine();
             Console2.WriteStartHeader("Get Workspace File Share");
-            Workspace workspace = await host.GetWorkspaceAsync(cancellationTokenSource.Token).ConfigureAwait(false);
+            Workspace workspace = await host.GetWorkspaceAsync(CancellationTokenSource.Token).ConfigureAwait(false);
             RelativityFileShare fileShare = workspace.DefaultFileShare;
             DisplayFileShare(fileShare);
             Console2.WriteEndHeader();
-            return workspace.DefaultFileShare;
+            return fileShare;
         }
 
         private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTransferHost host)
@@ -268,7 +273,7 @@ namespace Relativity.Transfer.Sample
 
             // Admin rights are required but you can search for all possible file shares within the instance.
             FileStorageSearchContext context = new FileStorageSearchContext { WorkspaceId = Workspace.AdminWorkspaceId };
-            FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, cancellationTokenSource.Token).ConfigureAwait(false);
+            FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, CancellationTokenSource.Token).ConfigureAwait(false);
 
             // Specify the cloud-based logical file share number - or just the 1st file share when all else fails.
             RelativityFileShare fileShare = results.GetRelativityFileShare(1) ?? results.FileShares.FirstOrDefault();
@@ -286,7 +291,7 @@ namespace Relativity.Transfer.Sample
         {
             return localPaths.Select(localPath => new TransferPath
             {
-                SourcePath = fileSystemService.CombineUnc(remoteTargetPath, fileSystemService.GetFileName(localPath.SourcePath)),
+                SourcePath = FileSystemService.CombineUnc(remoteTargetPath, FileSystemService.GetFileName(localPath.SourcePath)),
                 PathAttributes = TransferPathAttributes.File,
                 TargetPath = localTargetPath
             }).ToList();
@@ -294,7 +299,7 @@ namespace Relativity.Transfer.Sample
 
         private static async Task<IList<TransferPath>> GetLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath)
         {
-            string searchLocalPath = Path.Combine(Environment.CurrentDirectory, "Resources");
+            string searchLocalPath = FileSystemService.Combine(Environment.CurrentDirectory, "Resources");
             const bool Local = true;
             IList<TransferPath> localSourcePaths = await SearchPathsAsync(client, Local, searchLocalPath, uploadTargetPath).ConfigureAwait(false);
             return localSourcePaths;
@@ -307,7 +312,7 @@ namespace Relativity.Transfer.Sample
             PathEnumeratorContext pathEnumeratorContext = new PathEnumeratorContext(client.Configuration, new[] { searchPath }, targetPath);
             pathEnumeratorContext.PreserveFolders = false;
             IPathEnumerator pathEnumerator = client.CreatePathEnumerator(local);
-            EnumeratedPathsResult result = await pathEnumerator.EnumerateAsync(pathEnumeratorContext, cancellationTokenSource.Token).ConfigureAwait(false);
+            EnumeratedPathsResult result = await pathEnumerator.EnumerateAsync(pathEnumeratorContext, CancellationTokenSource.Token).ConfigureAwait(false);
             Console2.WriteLine("Local Paths: {0}", result.LocalPaths);
             Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", result.Elapsed);
             Console2.WriteLine("Total files: {0:n0}", result.TotalFileCount);
@@ -332,7 +337,7 @@ namespace Relativity.Transfer.Sample
 
             context.TransferPathProgress += (sender, args) =>
             {
-                Console2.WriteLine("Event=TransferPathProgress, Filename={0}, Status={1}", Path.GetFileName(args.Path.SourcePath), args.Status);
+                Console2.WriteLine("Event=TransferPathProgress, Filename={0}, Status={1}", FileSystemService.GetFileName(args.Path.SourcePath), args.Status);
             };
 
             context.TransferJobRetry += (sender, args) =>
@@ -355,12 +360,10 @@ namespace Relativity.Transfer.Sample
 
         private static ITransferLog CreateTransferLog()
         {
-            Assembly assembly = Assembly.GetEntryAssembly();
-            string directory = Directory.GetParent(assembly.Location).FullName;
             Logging.LoggerOptions loggerOptions = new Logging.LoggerOptions
             {
                 Application = "F456D022-5F91-42A5-B00F-5609AED8C9EF",
-                ConfigurationFileLocation = Path.Combine(directory, "LogConfig.xml"),
+                ConfigurationFileLocation = FileSystemService.Combine(Environment.CurrentDirectory, "LogConfig.xml"),
                 System = "Data-Transfer",
                 SubSystem = "Sample-Cli"
             };
