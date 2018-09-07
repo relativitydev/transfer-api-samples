@@ -4,16 +4,16 @@
 // </copyright>
 // ----------------------------------------------------------------------------
 
-namespace Relativity.Transfer
+namespace Relativity.Transfer.Sample
 {
-	using System;
-	using System.Globalization;
-	using System.IO;
+    using System;
+    using System.Globalization;
+    using System.IO;
 
-	/// <summary>
-	/// Represents a class object that creates a sub-directory and automatically deletes it through the <see cref="Dispose"/> method.
-	/// </summary>
-	public class AutoDeleteDirectory : IDisposable
+    /// <summary>
+    /// Represents a class object that creates a sub-directory and automatically deletes it through the <see cref="Dispose"/> method.
+    /// </summary>
+    public class AutoDeleteDirectory : IDisposable
     {
         /// <summary>
         /// The disposed backing.
@@ -25,10 +25,10 @@ namespace Relativity.Transfer
         /// </summary>
         public AutoDeleteDirectory()
         {
-	        string downloadUniqueFolder = string.Format(CultureInfo.InvariantCulture, "Downloads-{0:MM-dd-yyyy-hh-mm-ss}", DateTime.Now);
-			this.Path = System.IO.Path.Combine(Environment.CurrentDirectory, downloadUniqueFolder);
-	        Directory.CreateDirectory(this.Path);
-		}
+            string downloadUniqueFolder = string.Format(CultureInfo.InvariantCulture, "Downloads-{0:MM-dd-yyyy-hh-mm-ss}", DateTime.Now);
+            this.Path = System.IO.Path.Combine(Environment.CurrentDirectory, downloadUniqueFolder);
+            Directory.CreateDirectory(this.Path);
+        }
 
         /// <summary>
         /// Gets the directory path.
@@ -69,27 +69,27 @@ namespace Relativity.Transfer
                 {
                     try
                     {
-						string[] files = Directory.GetFiles(this.Path, "*", SearchOption.AllDirectories);
-	                    foreach (string file in files)
-	                    {
-		                    FileAttributes attributes = File.GetAttributes(file);
-		                    File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
-		                    File.Delete(file);
-	                    }
+                        string[] files = Directory.GetFiles(this.Path, "*", SearchOption.AllDirectories);
+                        foreach (string file in files)
+                        {
+                            FileAttributes attributes = File.GetAttributes(file);
+                            File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
+                            File.Delete(file);
+                        }
 
-						Directory.Delete(this.Path, true);
+                        Directory.Delete(this.Path, true);
                     }
                     catch (IOException e)
                     {
-	                    Console2.WriteLine(
-		                    ConsoleColor.Red,
+                        Console2.WriteLine(
+                            ConsoleColor.Red,
                             $"Failed to tear down the '{this.Path}' temp directory due to an I/O issue. Exception: "
                             + e);
                     }
                     catch (UnauthorizedAccessException e)
                     {
-	                    Console2.WriteLine(
-							ConsoleColor.Red,
+                        Console2.WriteLine(
+                            ConsoleColor.Red,
                             $"Failed to tear down the '{this.Path}' temp directory due to unauthorized access. Exception: "
                             + e);
                     }
