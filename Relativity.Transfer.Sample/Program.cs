@@ -1,6 +1,6 @@
 ﻿// ----------------------------------------------------------------------------
-// <copyright file="Program.cs" company="kCura Corp">
-//   Relativity ODA LLC (C) 2018 All Rights Reserved.
+// <copyright file="Program.cs" company="Relativity ODA LLC">
+//   © Relativity All Rights Reserved.
 // </copyright>
 // ----------------------------------------------------------------------------
 
