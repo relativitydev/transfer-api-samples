@@ -25,6 +25,7 @@ namespace Relativity.Transfer.Sample
             int bannerLength = Console.WindowWidth - 6;
             string asterisks = new string('*', (bannerLength - message.Length - 1) / 2);
             message = $"{asterisks} {message} {asterisks}".Substring(0, bannerLength);
+            WriteLine(string.Empty);
             WriteLine(DefaultConsoleColor, message);
         }
 
