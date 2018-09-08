@@ -68,7 +68,7 @@ namespace Relativity.Transfer.Sample
             using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
             {
                 // Use the workspace default file share to setup the target path.
-                string uploadTargetPath = GetRemoteTargetPath(fileShare);
+                string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
                 TransferPath localSourcePath = new TransferPath
                 {
                     PathAttributes = TransferPathAttributes.File,
@@ -124,7 +124,8 @@ namespace Relativity.Transfer.Sample
             {
                 // Create a job-based upload transfer request.
                 Console2.WriteStartHeader("Advanced Transfer - Upload");
-                string uploadTargetPath = GetRemoteTargetPath(fileShare);                                
+                string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
+                IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(client, uploadTargetPath, token).ConfigureAwait(false);
                 TransferContext context = CreateTransferContext();
                 TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
                 uploadJobRequest.Application = "Github Sample";
@@ -134,11 +135,9 @@ namespace Relativity.Transfer.Sample
                 using (ITransferJob job = await client.CreateJobAsync(uploadJobRequest, token).ConfigureAwait(false))
                 {
                     Console2.WriteLine("Advanced upload started.");
-                    IList<TransferPath> localSourcePaths = await GetLocalSourcePathsAsync(client, uploadTargetPath, token).ConfigureAwait(false);
 
                     // Paths added to the async job are transferred immediately.
                     await job.AddPathsAsync(localSourcePaths, token).ConfigureAwait(false);
-                    await ChangeDataRateAsync(job, token).ConfigureAwait(false);
 
                     // Await completion of the job.
                     ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
@@ -158,8 +157,13 @@ namespace Relativity.Transfer.Sample
                 // Create a transfer job to download the sample dataset to the target local path.
                 using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token).ConfigureAwait(false))
                 {
-                    IList<TransferPath> localSourcePaths = await GetLocalSourcePathsAsync(client, uploadTargetPath, token).ConfigureAwait(false);
-                    IEnumerable<TransferPath> remotePaths = GetRemotePaths(localSourcePaths, downloadTargetPath, uploadTargetPath);
+                    IEnumerable<TransferPath> remotePaths = localSourcePaths.Select(localPath => new TransferPath
+                    {
+                        SourcePath = uploadTargetPath + "\\" + Path.GetFileName(localPath.SourcePath),
+                        PathAttributes = TransferPathAttributes.File,
+                        TargetPath = downloadTargetPath
+                    });
+                    
                     await job.AddPathsAsync(remotePaths, token).ConfigureAwait(false);
                     await ChangeDataRateAsync(job, token).ConfigureAwait(false);
 
@@ -317,7 +321,7 @@ namespace Relativity.Transfer.Sample
             return fileShare;
         }
 
-        private static async Task<IList<TransferPath>> GetLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath, CancellationToken token)
+        private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath, CancellationToken token)
         {
             Console2.WriteStartHeader("Search Paths");
             string searchLocalPath = Path.Combine(Environment.CurrentDirectory, "Resources");
@@ -332,16 +336,6 @@ namespace Relativity.Transfer.Sample
             Console2.WriteLine("Total bytes: {0:n0}", result.TotalByteCount);
             Console2.WriteEndHeader();
             return result.Paths.ToList();
-        }
-
-        private static IEnumerable<TransferPath> GetRemotePaths(IEnumerable<TransferPath> localPaths, string localTargetPath, string remoteTargetPath)
-        {
-            return localPaths.Select(localPath => new TransferPath
-            {
-                SourcePath = remoteTargetPath + "\\" + Path.GetFileName(localPath.SourcePath),
-                PathAttributes = TransferPathAttributes.File,
-                TargetPath = localTargetPath
-            }).ToList();
         }
 
         private static TransferContext CreateTransferContext()
@@ -437,7 +431,7 @@ namespace Relativity.Transfer.Sample
             Console2.WriteLine("Retry count: {0}", result.RetryCount);
         }
 
-        private static string GetRemoteTargetPath(RelativityFileShare fileShare)
+        private static string GetUniqueRemoteTargetPath(RelativityFileShare fileShare)
         {
             // Note: replace this with an easier to recognize folder name.
             string uniqueFolder = Guid.NewGuid().ToString();
