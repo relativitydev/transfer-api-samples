@@ -38,40 +38,28 @@ As of this writing, TAPI is now integrated within the following components and a
 ***Required** for Open SSL libraries(libeay32.dll, ssleay32.dll) and the Aspera ASCP.exe**
 ***Extracted** under %TEMP%/Relativity-Transfer/Aspera-Runtime/bin**
 
-## Build Requirements
-You must have the following installed in order to build the master solution.
-* Visual Studio 2015 + Update 3
-* Paket for Visual Studio v0.38.3
-* NUnit 3 Test Adapter v3.9.0.0 (required to run NUnit3 tests)
-
-***Note:** Visual Studio 2017 can build the solution but requires executing the 'Install all packages' command from the Paket Dependancies Manager first.**
-
-## To build the repository using Visual Studio
-1. Open the *Relativity.Transfer.Client.sln* solution
-2. Right click on the paket.dependencies file and then execute Install.
-3. Build the solution.
-
-## Build the repository using the build scripts
-1. Run build.ps1 for a local build with tests
-2. Use build.ps1 CheckConfigureAwait to scan solution for Await used without ConfigureAwait
-3. Run build.ps1 Help for other avaliable options
-
 ## Dependencies
-The following NuGet packages are required by the TAPI solution:
+To obtain TAPI libraries, contact [Relativity support](mailto:support@relativity.com).
 
-* aspera.faspnative (native Aspera engine)
-* dtx.rcc.client32.win (32-bit RCC API)
-* dtx.rcc.client64.win (64-bit RCC API)
-* Newtonsoft.Json
-* Polly
-* ssh.net
-* relativity.faspmanager (Aspera API)
-* Relativity.Logging
-* Relativity.Logging.Interfaces
+The following NuGet packages are required:
+
+* Newtonsoft.Json v6.0.8
+* Polly v5.3.1
+* relativity.faspmanager v3.7.2.0
+* Relativity.Logging v9.4.320
+* Relativity.Logging.Interfaces v9.4.320
+* ssh.net v2016.0.0.0
+
+The following NuGet packages are optional:
+
+* relativity.transfer.client.azureblob (Azure blob transfer client)
+* relativity.transfer.client.azurfiles (Azure files transfer client)
+* relativity.transfer.package.rcc32 (32-bit RCC package library)
+* relativity.transfer.package.rcc64 (64-bit RCC package library)
+
+***Note:** The Azure packages are only required when using the Azure transfer clients.**
 
 ***Note:** The RCC packages are only required when using the RCC package library API's.**
-
-To obtain TAPI libraries, contact [Relativity support](mailto:support@relativity.com).
 
 ## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
@@ -79,8 +67,8 @@ The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.micro
 * Aspera
 * File Share
 * HTTP
-* Azure Blob
-* Azure Files
+* Azure Blob (requires the relativity.transfer.client.azureblob package)
+* Azure Files (requires the relativity.transfer.client.azurefiles package)
 
 ## Long Path Support in TAPI
 Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
@@ -127,23 +115,23 @@ The next sections incrementally builds the sample solution from the ground up an
 The sample includes a few helper classes and a small dataset and will get copied into a new project. Open a command prompt and execute the following command:
 
 ```Batchfile
-git clone https://github.com/relativitydev/transfer-api-samples.git C:\Projects\transfer-api-samples
+git clone https://github.com/relativitydev/transfer-api-samples.git C:\SourceCode\transfer-api-samples
 ```
 
-***Note:** The documentation assumes Visual Studio 2017 is used and that all repositories and solutions are stored within the `C:\Projects` directory.*
+***Note:** The documentation assumes Visual Studio 2017 is used and that all repositories and solutions are stored within the `C:\SourceCode` directory.*
 
 #### New C# Project
 Using Visual Studio, create a new `Visual C# Console App (.NET Framework)` project and enter the following parameters:
 
 * Name: `Relativity.Transfer.Sample`
-* Location: `C:\Projects`
+* Location: `C:\SourceCode`
 * Solution: `Create new solution`
 * Solution name: `Relativity.Transfer.Sample`
 * Framework: `4.6.2`
 
 The window should look like this:
 
-![newproject](https://user-images.githubusercontent.com/32276163/45234014-5b7d4480-b289-11e8-9197-41604916fe64.png)
+![newproject](https://user-images.githubusercontent.com/32276163/45301410-c1561000-b4c5-11e8-884a-fce792e2068d.png)
 
 #### Add Assembly References
 Creating a new C# project should already add the required assembly references. Navigate to the Solution Explorer tab and verify the references are set correctly.
@@ -174,7 +162,7 @@ Left-click the `Installed` tab and the window should look like this:
 Verify the solution builds successfully.
 
 #### Copy Files and Add to Project
-The sample repository includes a few helper classes and a small test dataset. All of the files listed below are copied from the `C:\Projects\transfer-api-samples` cloned repository and added underneath the `C:\Projects\Relativity.Transfer.Sample\Relativity.Transfer.Sample` directory.
+The sample repository includes a few helper classes and a small test dataset. All of the files listed below are copied from the `C:\SourceCode\transfer-api-samples` cloned repository and added underneath the `C:\SourceCode\Relativity.Transfer.Sample\Relativity.Transfer.Sample` directory.
 
 * Create a `Resources` solution folder
     * Navigate to the Solution Explorer tab
@@ -182,12 +170,12 @@ The sample repository includes a few helper classes and a small test dataset. Al
     * Enter `Resources` for the folder name
 * Copy the dataset files to the `Resources` project sub-folder
     * Open File Explorer
-    * Navigate to the `C:\Projects\transfer-api-samples\Relativity.Transfer.Sample\Resources` directory    
-    * Copy all files to the `C:\Projects\Relativity.Transfer.Sample\Relativity.Transfer.Sample\Resources` directory
+    * Navigate to the `C:\SourceCode\transfer-api-samples\Relativity.Transfer.Sample\Resources` directory    
+    * Copy all files to the `C:\SourceCode\Relativity.Transfer.Sample\Relativity.Transfer.Sample\Resources` directory
 * Copy the helper source files to the project root directory
     * Open File Explorer
-    * Navigate to the `C:\Projects\transfer-api-samples\Relativity.Transfer.Sample` directory
-    * Copy `AutoDeleteDirectory.cs`, `Console2.cs`, and `LogConfig.xml` to the `C:\Projects\Relativity.Transfer.Sample\Relativity.Transfer.Sample` directory
+    * Navigate to the `C:\SourceCode\transfer-api-samples\Relativity.Transfer.Sample` directory
+    * Copy `AutoDeleteDirectory.cs`, `Console2.cs`, and `LogConfig.xml` to the `C:\SourceCode\Relativity.Transfer.Sample\Relativity.Transfer.Sample` directory
 
 Once all files have been copied, they must be added to the `Relativity.Transfer.Sample` project.
 
@@ -443,17 +431,6 @@ namespace Relativity.Transfer.Sample
 ```
 </details>
 
-Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
-
-### General Concepts and Configuration
-* [Cancellation](#cancellation)
-* [Initialize Global Settings](#initialize-global-settings)
-* [Create the ClientConfiguration Object](#create-the-clientconfiguration-object)
-* [Create the ITransferLog Object](#create-the-itransferLog-object)
-* [Create the IRelativityTransferHost Object](#create-the-irelativitytransferhost-object)
-* [Create the ITransferClient Object](#create-the-itransferclient-object)
-
-#### Cancellation
 The use of cancellation token is strongly recommended with potentially long-running transfer operations. The sample wraps a `CancellationTokenSource` object within a using block, assigns the `CancellationToken` object to a variable, and passes the variable to all asynchronous methods.
 
 ```csharp
@@ -463,6 +440,20 @@ using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSo
     ...
 }
 ```
+
+Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
+
+### General Concepts and Configuration
+The next several sections incrementally configure and construct all required objects.
+
+* [Initialize Global Settings](#initialize-global-settings)
+* [Create the ClientConfiguration Object](#create-the-clientconfiguration-object)
+* [Create the ITransferLog Object](#create-the-itransferLog-object)
+* [Create the IRelativityTransferHost Object](#create-the-irelativitytransferhost-object)
+* [Create the ITransferClient Object](#create-the-itransferclient-object)
+
+#### Cancellation
+
 
 #### Initialize Global Settings
 The `InitializeGlobalSettings()` method is responsible for configuring the [Global Settings](#global-settings).
@@ -761,7 +752,11 @@ DisplayTransferResult(downloadResult);
 ```
 
 #### Start or Debug
-Start or debug the project and ensure 1 file is successfully uploaded/downloaded and the application terminates with a zero exit code.
+Start or debug the project and ensure 1 file is successfully uploaded/downloaded and the application terminates with a zero exit code. Navigate to the `%TEMP%\Relativity-Transfer\Sample` directory using File Explorer, open the latest date-encoded log file with your favorite text editor, and review the log entries. Because log files can be difficult to view or parse, Relativity Logging was configured with the [Seq](https://getseq.net/) sink - [click here to view the Seq logs](http://localhost:5341/#/events) if Seq has been separately installed.
+
+For first time executaions, Windows may popup a `Windows Defender` window like the one below. If this is presented, click the "Allow access" button.
+
+![windowsdefender-firewall](https://user-images.githubusercontent.com/32276163/45306961-b2c22580-b4d2-11e8-8e9b-8ee90168d7f9.png)
 
 ### Advanced Demo
 The basic demo highlights core concepts required by any TAPI-based application. Real-world applications typically involve large or even massive datasets that not only require better transfer request management but provide real-time data rate, progress, and time remaining to their users.
@@ -885,7 +880,7 @@ private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAspera
 </details>
 
 #### Search For a Specific File Share
-Using a workspace to drive the selected file share is convenient but does not meet all workflow requirements. For example, consider a data migration application to move files from on-premise to RelativityOne. In this scenario, the target workspace may not even exist; however, the migration operator knows precisely which file share should be used. For scenarios like these, the `IFileStorageSearch` API is provided.
+Using a workspace to drive the selected file share is convenient but does not meet all workflow requirements. For example, consider a data migration application to move files from on-premise to RelativityOne. In this scenario, the target workspace may not even exist; however, the migration operator knows precisely which file share should be used. For scenarios like these, the [File Storage Search](#file-storage-search) API is provided.
 
 ***Note:**  You must be an admin to retrieve file shares from the instance. See [Targeting File Shares](#targeting-file-shares) for more details.*
 
@@ -919,7 +914,6 @@ private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTran
 
 ***Note:**  The `GetRelativityFileShare()` method supports retrieving file shares by artifact, UNC path, logical number, and name.*
 
-#### Specify a Target File Share
 Once the file share is retrieved by the `GetFileShareAsync()` method, the object is simply assigned to the `TargetFileShare` property found within the `ClientConfiguration` object.
 
 ```csharp
@@ -934,8 +928,8 @@ Relativity.Transfer.Aspera.AsperaClientConfiguration configuration = CreateAsper
 configuration.TargetFileShare = fileShare;
 ```
 
-#### Search using IPathEnumerator
-Data transfer workflows often involve large datasets stored on network servers or other enterprise storage devices. In many cases, the data transfer operator would like to transfer all of the files contained within a specified path. The [IPathEnumerator](local-and-remote-enumeration) object is constructed from `ITransferClient` and can be used to efficiently search for and create `TransferPath` objects. For large datasets (IE 1M+), the same API supports serializing the results to disk and batching the results in smaller chunks. Since the test dataset is small, the enumeration option is favored over serializing the results to disk. Once the local dataset search is completed, the `EnumeratedPathsResult` object is returned to include all discovered `TransferPath` objects and other useful metrics.
+#### Search using Local Path Enumeration
+Data transfer workflows often involve large datasets stored on network servers or other enterprise storage devices. In many cases, the data transfer operator would like to transfer all of the files contained within a specified path. The [IPathEnumerator](local-and-remote-enumeration) object is constructed from `ITransferClient` and can be used to efficiently search for and create `TransferPath` objects. For large datasets (IE 1M+), the same API supports serializing the results to disk and batching the results in smaller chunks. Since the test dataset is small, the enumeration option is used. Once the local dataset search is completed, the `EnumeratedPathsResult` object is returned to include all discovered `TransferPath` objects and other useful metrics.
 
 Find the `SearchLocalSourcePathsAsync()` empty method in the `Program` class and replace with the following:
 
@@ -962,7 +956,7 @@ private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITran
 </details>
 
 #### Subscribe to Transfer Events
-Since transfer events are used for both upload and download operations, the demo wraps this within the `CreateTransferContext()` method to construct the [TransferContext](#transfercontext) object. This object is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.
+Since transfer events are used for both upload and download operations, the demo wraps this within the `CreateTransferContext()` method to construct the [TransferContext](#transfercontext) object and write event details to the console. This object is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.
 
 Find the `CreateTransferContext()` empty method in the `Program` class and replace with the following:
 
@@ -1009,9 +1003,7 @@ private static TransferContext CreateTransferContext()
 </details>
 
 #### Upload and Download Job TransferRequest
-When defining a `TransferRequest` object to support transfer jobs, `TransferPath` objects are *never* supplied to the request because the whole point of using a job is to manage large transfer requests. If the request consisted of 20M files, the memory and CPU overhead would be excessive if all 20M objects had to be constructed.
-
-Only the target path and `TransferContext` object are passed to the `ForUploadJob()` and `ForDownloadJob()` methods respectively.
+When defining a `TransferRequest` object to support transfer jobs, `TransferPath` objects are *never* added to the request as this responsibility is handled by the transfer job. Among the available overloads, the `ForUploadJob()` and `ForDownloadJob()` methods accept a target path and `TransferContext` object.
 
 ```csharp
 // Create a job-based upload transfer request.
@@ -1052,7 +1044,7 @@ using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token)
 ```
 
 #### Change the Data Rate
-One of the other advantages with using a job is that it provides the API caller an object to perform runtime operations like increasing or decreasing the data rate. Because not all TAPI client support this feature, a convenient `IsDataRateChangeSupported` property has been provided.
+One of the other advantages with using a job is that it provides the API caller an object to perform job-specific operations like increasing or decreasing the data rate. Because not all TAPI client support this feature, a convenient `IsDataRateChangeSupported` property is provided by the `ITransferJob` object.
 
 Find the `ChangeDataRateAsync()` empty method in the `Program` class and replace with the following:
 
