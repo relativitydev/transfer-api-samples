@@ -3,7 +3,6 @@ You can use the Transfer API (TAPI) to build application components that connect
 
 ***Important!**  We're providing TAPI as a preview release so that you can evaluate it and provide us with feedback. The preview release offers a functional API, which will continue to undergo minor contract changes and further enhancements.*
 
-
 ## Core TAPI features
 The TAPI includes the following core features:
 
@@ -38,28 +37,23 @@ As of this writing, TAPI is now integrated within the following components and a
 ***Required** for Open SSL libraries(libeay32.dll, ssleay32.dll) and the Aspera ASCP.exe**
 ***Extracted** under %TEMP%/Relativity-Transfer/Aspera-Runtime/bin**
 
-## Dependencies
-To obtain TAPI libraries, contact [Relativity support](mailto:support@relativity.com).
+## Build Requirements
+You must have the following installed in order to build the master solution.
+* Visual Studio 2015 + Update 3
+* Paket for Visual Studio v0.38.3
+* NUnit 3 Test Adapter v3.9.0.0 (required to run NUnit3 tests)
 
-The following NuGet packages are required:
+***Note:** Visual Studio 2017 can build the solution but requires executing the 'Install all packages' command from the Paket Dependancies Manager first.**
 
-* Newtonsoft.Json v6.0.8
-* Polly v5.3.1
-* relativity.faspmanager v3.7.2.0
-* Relativity.Logging v9.4.320
-* Relativity.Logging.Interfaces v9.4.320
-* ssh.net v2016.0.0.0
+### To build the repository using Visual Studio
+1. Open the *Relativity.Transfer.Client.sln* solution
+2. Right click on the paket.dependencies file and then execute Install.
+3. Build the solution.
 
-The following NuGet packages are optional:
-
-* relativity.transfer.client.azureblob (Azure blob transfer client)
-* relativity.transfer.client.azurfiles (Azure files transfer client)
-* relativity.transfer.package.rcc32 (32-bit RCC package library)
-* relativity.transfer.package.rcc64 (64-bit RCC package library)
-
-***Note:** The Azure packages are only required when using the Azure transfer clients.**
-
-***Note:** The RCC packages are only required when using the RCC package library API's.**
+### Build the repository using the build scripts
+1. Run build.ps1 for a local build with tests
+2. Use build.ps1 CheckConfigureAwait to scan solution for Await used without ConfigureAwait
+3. Run build.ps1 Help for other avaliable options
 
 ## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
@@ -94,7 +88,7 @@ Prerequisites for running the solution:
 * A Relativity instance that you can connect to
 * Valid Relativity credentials
 
-The next sections incrementally builds the sample solution from the ground up and culminate with basic and advanced transfer demos.
+The next sections incrementally builds the solution to demonstrate both basic and advanced TAPI features.
 
 * [Project Skeleton](#project-skeleton)
 * [General Concepts and Configuration](#general-concepts-and-configuration)
@@ -102,8 +96,10 @@ The next sections incrementally builds the sample solution from the ground up an
 * [Advanced Demo](#advanced-demo)
 
 ### Project Skeleton
+This section creates the C# console application used to support the basic and advanced demos.
+
 * [Clone GIT Repository](#clone-git-repository)
-* [New C# Project](#new-C#-project)
+* [New Console Project](#new-console-project)
 * [Add Assembly References](#add-assembly-references)
 * [Add NuGet Package References](#add-nuget-package-references)
 * [Copy Files and Add to Project](#copy-files-and-add-to-project)
@@ -120,7 +116,7 @@ git clone https://github.com/relativitydev/transfer-api-samples.git C:\SourceCod
 
 ***Note:** The documentation assumes Visual Studio 2017 is used and that all repositories and solutions are stored within the `C:\SourceCode` directory.*
 
-#### New C# Project
+#### New Console Project
 Using Visual Studio, create a new `Visual C# Console App (.NET Framework)` project and enter the following parameters:
 
 * Name: `Relativity.Transfer.Sample`
@@ -239,6 +235,7 @@ Copy and paste the source below into the `App.config` file.
   </runtime>
 </configuration>
 ```
+
 </details>
 
 #### Replace Main Method and Add Helpers
