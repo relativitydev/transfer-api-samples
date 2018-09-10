@@ -37,24 +37,6 @@ As of this writing, TAPI is now integrated within the following components and a
 ***Required** for Open SSL libraries(libeay32.dll, ssleay32.dll) and the Aspera ASCP.exe**
 ***Extracted** under %TEMP%/Relativity-Transfer/Aspera-Runtime/bin**
 
-## Build Requirements
-You must have the following installed in order to build the master solution.
-* Visual Studio 2015 + Update 3
-* Paket for Visual Studio v0.38.3
-* NUnit 3 Test Adapter v3.9.0.0 (required to run NUnit3 tests)
-
-***Note:** Visual Studio 2017 can build the solution but requires executing the 'Install all packages' command from the Paket Dependancies Manager first.**
-
-### To build the repository using Visual Studio
-1. Open the *Relativity.Transfer.Client.sln* solution
-2. Right click on the paket.dependencies file and then execute Install.
-3. Build the solution.
-
-### Build the repository using the build scripts
-1. Run build.ps1 for a local build with tests
-2. Use build.ps1 CheckConfigureAwait to scan solution for Await used without ConfigureAwait
-3. Run build.ps1 Help for other avaliable options
-
 ## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
 
