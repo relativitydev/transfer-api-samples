@@ -655,7 +655,7 @@ private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, C
 ```
 </details>
 
-#### Get the Workspace File Share Object
+#### Get Workspace File Share Object
 When a Relativity workspace is created, the user must specify a resource pool in order to assign a default file share resource server. Not only is this a convenient way to access file share details but *the user is not required to be an admin to directly access the file share resource server objects.*
 
 To simplify acquiring workspace and file share details, the `IRelativityTransferHost` and `ITransferClient` objects both support a `GetWorkspaceAsync` method to retrieve a `Workspace` object. Given the `Workspace` object, the `DefaultFileShare` property can be used to access the UNC path.
@@ -677,7 +677,7 @@ private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync
 ```
 </details>
 
-#### Upload TransferRequest
+#### Create Upload TransferRequest
 Given the workspace default file share, the upload target path is defined and the `TransferRequest` object is constructed using the `ForUpload` overload:
 
 ```csharp
@@ -695,7 +695,7 @@ Console2.WriteStartHeader("Basic Transfer - Upload");
 TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, uploadTargetPath);
 ```
 
-#### Download TransferRequest
+#### Create Download TransferRequest
 Fundamentally, the download request is just the inverse of the upload request. The remote path is now the source path and the local path is now the target path. The `TransferRequest` object is constructed using the `ForDownload` overload:
 
 ```csharp
@@ -712,7 +712,7 @@ TransferPath remotePath = new TransferPath
 TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, downloadTargetPath);
 ```
 
-#### TransferAsync
+#### Execute TransferAsync
 The request object is supplied to `TransferAsync` and the caller awaits completion. TAPI internally manages transfer errors and automatically retries *just the files that haven't already been transferred.* Once the transfer completes, the `ITransferResult` object provides key transfer metric and telemetry data.
 
 ```csharp
@@ -831,7 +831,7 @@ private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host
 ```
 </details>
 
-#### Create the AsperaClientConfiguration Object
+#### Create AsperaClientConfiguration Object
 The `CreateAsperaClientConfiguration()` method is responsible for creating and configuring the [AsperaClientConfiguration](#asperaclientconfiguration) object. This object inherits all of the configurable properties found within [ClientConfiguration](#clientconfiguration), adds numerous Aspera specific transfer properties, and assigns `Aspera` to the the `Client` property. This value is later evaluated by the `CreateClientAsync()` method to construct the specified TAPI client.
 
 Find the `CreateAsperaClientConfiguration()` empty method in the `Program` class and replace with the following:
@@ -860,7 +860,7 @@ private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAspera
 ```
 </details>
 
-#### Search For a Specific File Share
+#### Search For Specific File Share
 Using a workspace to drive the selected file share is convenient but does not meet all workflow requirements. For example, consider a data migration application to move files from on-premise to RelativityOne. In this scenario, the target workspace may not even exist; however, the migration operator knows precisely which file share should be used. For scenarios like these, the [File Storage Search](#file-storage-search) API is provided.
 
 ***Note:**  You must be an admin to retrieve file shares from the instance. See [Targeting File Shares](#targeting-file-shares) for more details.*
@@ -909,7 +909,7 @@ Relativity.Transfer.Aspera.AsperaClientConfiguration configuration = CreateAsper
 configuration.TargetFileShare = fileShare;
 ```
 
-#### Search using Local Path Enumeration
+#### Search Local Source Paths
 Data transfer workflows often involve large datasets stored on network servers or other enterprise storage devices. In many cases, the data transfer operator would like to transfer all of the files contained within a specified path. The [IPathEnumerator](local-and-remote-enumeration) object is constructed from `ITransferClient` and can be used to efficiently search for and create `TransferPath` objects. For large datasets (IE 1M+), the same API supports serializing the results to disk and batching the results in smaller chunks. Since the test dataset is small, the enumeration option is used. Once the local dataset search is completed, the `EnumeratedPathsResult` object is returned to include all discovered `TransferPath` objects and other useful metrics.
 
 Find the `SearchLocalSourcePathsAsync()` empty method in the `Program` class and replace with the following:
@@ -936,7 +936,7 @@ private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITran
 ```
 </details>
 
-#### Subscribe to Transfer Events
+#### Subscribe Transfer Events
 Since transfer events are used for both upload and download operations, the demo wraps this within the `CreateTransferContext()` method to construct the [TransferContext](#transfercontext) object and write event details to the console. This object is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.
 
 Find the `CreateTransferContext()` empty method in the `Program` class and replace with the following:
@@ -983,7 +983,7 @@ private static TransferContext CreateTransferContext()
 ```
 </details>
 
-#### Upload and Download Job TransferRequest
+#### Create Job TransferRequest Objects
 When defining a `TransferRequest` object to support transfer jobs, `TransferPath` objects are *never* added to the request as this responsibility is handled by the transfer job. Among the available overloads, the `ForUploadJob()` and `ForDownloadJob()` methods accept a target path and `TransferContext` object.
 
 ```csharp
