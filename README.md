@@ -731,7 +731,7 @@ Console2.WriteLine("Basic download transfer completed.");
 DisplayTransferResult(downloadResult);
 ```
 
-#### Start or Debug
+#### Basic Start or Debug
 Start or debug the project and ensure 1 file is successfully uploaded/downloaded and the application terminates with a zero exit code. Navigate to the `%TEMP%\Relativity-Transfer\Sample` directory using File Explorer, open the latest date-encoded log file with your favorite text editor, and review the log entries. Because log files can be difficult to view or parse, Relativity Logging was configured with the [Seq](https://getseq.net/) sink - [click here to view the Seq logs](http://localhost:5341/#/events) if Seq has been separately installed.
 
 For first time executaions, Windows may popup a `Windows Defender` window like the one below. If this is presented, click the "Allow access" button.
@@ -1044,7 +1044,7 @@ private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToke
 ```
 </details>
 
-#### Start or Debug
+#### Advanced Start or Debug
 Start or debug the project and ensure 5 files are successfully uploaded/downloaded and the application terminates with a zero exit code.
 
 The following sections provide detailed reference for the Transfer API operations illustrated by the sample program above.
