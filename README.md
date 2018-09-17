@@ -426,10 +426,10 @@ Verify the solution builds successfully. Even though the application performs no
 The next several sections incrementally configure and construct all required objects.
 
 * [Initialize Global Settings](#initialize-global-settings)
-* [Create the ClientConfiguration Object](#create-the-clientconfiguration-object)
-* [Create the ITransferLog Object](#create-the-itransferLog-object)
-* [Create the IRelativityTransferHost Object](#create-the-irelativitytransferhost-object)
-* [Create the ITransferClient Object](#create-the-itransferclient-object)
+* [Create ClientConfiguration Object](#create-clientconfiguration-object)
+* [Create ITransferLog Object](#create-itransferLog-object)
+* [Create IRelativityTransferHost Object](#create-irelativitytransferhost-object)
+* [Create ITransferClient Object](#create-itransferclient-object)
 
 #### Cancellation
 
@@ -467,7 +467,7 @@ private static void InitializeGlobalSettings()
 ```
 </details>
 
-#### Create the ClientConfiguration Object
+#### Create ClientConfiguration Object
 The `CreateClientConfiguration()` method is responsible for creating and configuring the [ClientConfiguration](#clientconfiguration) instance.
 
 Find the `CreateClientConfiguration()` empty method in the `Program` class and replace with the following:
@@ -492,7 +492,7 @@ private static ClientConfiguration CreateClientConfiguration()
 ```
 </details>
 
-#### Create the ITransferLog Object
+#### Create ITransferLog Object
 The `CreateTransferLog()` method uses a Relativity Logging XML configuration file to create the [ITransferLog](#logging) instance used to log transfer details, warnings, and errors. It's entirely possible for API users to create an `ITransferLog` derived class object and use virtually any logging framework; however, the `RelativityTransferLog` class object is provided to simplify integration with Relativity Logging. The `LogConfig.xml` is designed to write all entries to a rolling log file within the user profile `%TEMP%` directory and a local [SEQ](https://getseq.net) log server.
 
 Find the `CreateTransferLog()` empty method in the `Program` class and replace with the following:
@@ -518,7 +518,7 @@ private static ITransferLog CreateTransferLog()
 ```
 </details>
 
-#### Create the IRelativityTransferHost Object
+#### Create IRelativityTransferHost Object
 The `CreateRelativityTransferHost()` method defines a [RelativityConnectionInfo](#relativityconnectioninfo) object to specify the Relativity URL, credentials, and optional workspace artifact ID. The URL and credentials are used by for all required HTTP and REST endpoints and TAPI supports both basic authentication and OAuth2. For more information about Relativity OAuth2 clients, see [Relativity Documentation Site]("https://help.relativity.com/RelativityOne/Content/Relativity/Authentication/OAuth2_clients.htm"). Once constructed, the `RelativityConnectionInfo` object is passed to the [RelativityTransferHost](#relativitytransferhost) constructor.
 
 Find the `CreateRelativityTransferHost()` empty method in the `Program` class and replace with the following:
@@ -549,7 +549,7 @@ Now update the following constants with valid parameters:
 * The Relativity username and password.
 * The workspace artifact identifier.
 
-#### Create the ITransferClient Object
+#### Create ITransferClient Object
 If a workspace artifact is specified within the `RelativityConnectionInfo` object, the `CreateClientAsync()` method is designed to query the workspace, determine which transfer clients are supported (Aspera, file share, or HTTP), and choose the optimal client. *If* a client is specified within the `ClientConfiguration` object, the `CreateClient()` method explicitly instructs TAPI to construct a certain type of client. There may be circumstances where direct access to the file share is guaranteed and the FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
 
 Find the `CreateClientAsync()` empty method in the `Program` class and replace with the following:
