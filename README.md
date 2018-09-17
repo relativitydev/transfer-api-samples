@@ -427,7 +427,7 @@ The next several sections incrementally configure and construct all required obj
 
 * [Initialize Global Settings](#initialize-global-settings)
 * [Create ClientConfiguration Object](#create-clientconfiguration-object)
-* [Create ITransferLog Object](#create-itransferLog-object)
+* [Create ITransferLog Object](#create-itransferlog-object)
 * [Create IRelativityTransferHost Object](#create-irelativitytransferhost-object)
 * [Create ITransferClient Object](#create-itransferclient-object)
 
