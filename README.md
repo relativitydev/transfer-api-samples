@@ -599,6 +599,7 @@ For this demo, the approach is as follows:
 * Create a download transfer request for the 1 test file that was just uploaded
 * Submit the transfer request, await completion, and display the results
 
+#### Replace DemoBasicTransferAsync Method
 Find the `DemoBasicTransferAsync` empty method in the `Program` class and replace with the following:
 
 <details><summary>Click to View Source</summary>
@@ -754,6 +755,7 @@ For this demo, the approach is as follows:
 * Add the search result remote transfer paths to the job
 * Change the data rate, await completion, and display the results
 
+#### Replace DemoAdvancedTransferAsync Method
 Find the `DemoAdvancedTransferAsync()` empty method in the `Program` class and replace with the following:
 
 <details><summary>Click to View Source</summary>
