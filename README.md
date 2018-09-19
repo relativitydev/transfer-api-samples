@@ -1,7 +1,5 @@
 # Relativity Transfer API for .NET
-You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, HTTP, SMB, and Aspera. You can also stream data from Relativity. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing. Unlike the Import API, TAPI does not create Relativity objects associated with the data, for example, documents and RDOs.
-
-***Important!**  We're providing TAPI as a preview release so that you can evaluate it and provide us with feedback. The preview release offers a functional API, which will continue to undergo minor contract changes and further enhancements.*
+You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, HTTP, SMB, and Aspera. You can also stream data from Relativity. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing. Unlike the Import API, TAPI doesn't create Relativity objects associated with the data, for example, documents and RDOs.
 
 ## Core TAPI features
 The TAPI includes the following core features:
@@ -19,6 +17,15 @@ The TAPI includes the following core features:
 
 We are  providing a sample solution to help you get started developing your own transfer applications.
 
+## System requirements
+* Bluestem release for RelativityOne or on-premises Relativity
+* .NET 4.6.2
+* Visual C++ 2010 x86 Runtime
+* Intel 2Ghz (2-4 cores is recommended)
+* 8GB RAM (32GB of RAM is recommended)
+
+***Note:** The Visual C++ runtime is required for Open SSL and Aspera transfer client**
+
 ## Integrations
 As of this writing, TAPI is now integrated within the following components and applications:
 
@@ -27,15 +34,6 @@ As of this writing, TAPI is now integrated within the following components and a
 * Relativity One Staging Explorer
 * Transfer CLI
 * R1 File Migrator CLI
-
-## Target Framework
-* .NET 4.6.2
-
-## Runtime Requirements
-* Visual C++ 2010 x86 Runtime
-
-***Required** for Open SSL libraries(libeay32.dll, ssleay32.dll) and the Aspera ASCP.exe**
-***Extracted** under %TEMP%/Relativity-Transfer/Aspera-Runtime/bin**
 
 ## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
@@ -46,7 +44,7 @@ The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.micro
 * Azure Blob (requires the relativity.transfer.client.azureblob package)
 * Azure Files (requires the relativity.transfer.client.azurefiles package)
 
-## Long Path Support in TAPI
+## Long path support
 Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
 
 The maximum path length now depends on the chosen transfer client.  These limits apply for both the source and full target path lengths.
@@ -57,9 +55,9 @@ The maximum path length now depends on the chosen transfer client.  These limits
 | Aspera                         | 470                                                 |
 | HTTP                           | 222                                                 |
 
-If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. And finally, when using the HTTP transfer client, the limit is 222. HTTP is limited to 222 characters due to a current limitation with our enumeration process, which cannot currently account for how the HTTP transfer client renames transferred files using a 36-character GUID. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file will not be transferred.
+If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. And finally, when using the HTTP transfer client, the limit is 222. HTTP is limited to 222 characters due to a current limitation with our enumeration process, which cannot currently account for how the HTTP transfer client renames transferred files using a 36-character GUID. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file won't be transferred.
 
-As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This global setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and will not be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
+As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This global setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and won't be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
 
 ## Sample solution and tutorial
 The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications and demonstrates basic and advanced API usage.
@@ -72,33 +70,33 @@ Prerequisites for running the solution:
 
 The next sections incrementally builds the solution to demonstrate both basic and advanced TAPI features.
 
-* [Project Skeleton](#project-skeleton)
-* [General Concepts and Configuration](#general-concepts-and-configuration)
-* [Basic Demo](#basic-demo)
-* [Advanced Demo](#advanced-demo)
+* [Project skeleton](#project-skeleton)
+* [General concepts and configuration](#general-concepts-and-configuration)
+* [Basic demo](#basic-demo)
+* [Advanced demo](#advanced-demo)
 
-### Project Skeleton
+### Project skeleton
 This section creates the C# console application used to support the basic and advanced demos.
 
-* [Clone GIT Repository](#clone-git-repository)
-* [New Console Project](#new-console-project)
-* [Add Assembly References](#add-assembly-references)
-* [Add NuGet Package References](#add-nuget-package-references)
-* [Copy Files and Add to Project](#copy-files-and-add-to-project)
-* [Update File Properties](#update-file-properties)
+* [Clone GIT repository](#clone-git-repository)
+* [New console project](#new-console-project)
+* [Add assembly references](#add-assembly-references)
+* [Add NuGet package references](#add-nuget-package-references)
+* [Copy files and add to project](#copy-files-and-add-to-project)
+* [Update file properties](#update-file-properties)
 * [Update App.config](#update-app.config)
-* [Replace Main Method and Add Helpers](#replace-main-method-and-add-helpers)
+* [Replace Main method and add helpers](#replace-main-method-and-add-helpers)
 
-#### Clone GIT Repository
+#### Clone GIT repository
 The sample includes a few helper classes and a small dataset and will get copied into a new project. Open a command prompt and execute the following command:
 
-```Batchfile
+```bat
 git clone https://github.com/relativitydev/transfer-api-samples.git C:\SourceCode\transfer-api-samples
 ```
 
 ***Note:** The documentation assumes Visual Studio 2017 is used and that all repositories and solutions are stored within the `C:\SourceCode` directory.*
 
-#### New Console Project
+#### New console project
 Using Visual Studio, create a new `Visual C# Console App (.NET Framework)` project and enter the following parameters:
 
 * Name: `Relativity.Transfer.Sample`
@@ -111,7 +109,7 @@ The window should look like this:
 
 ![newproject](https://user-images.githubusercontent.com/32276163/45301410-c1561000-b4c5-11e8-884a-fce792e2068d.png)
 
-#### Add Assembly References
+#### Add assembly references
 Creating a new C# project should already add the required assembly references. Navigate to the Solution Explorer tab and verify the references are set correctly.
 
 * Right-click the `References` folder item and left-click the `Add Reference...` menu item
@@ -123,7 +121,7 @@ The `Reference Manager` window should look like this:
 
 ![referencemanager](https://user-images.githubusercontent.com/32276163/45234022-6041f880-b289-11e8-8436-d36a074a62e5.png)
 
-#### Add NuGet Package References
+#### Add NuGet package references
 Navigate to the Solution Explorer tab and add the NuGet package reference.
 
 * Right-click the `References` folder item and Left-click the `Manage NuGet Packages...` menu item
@@ -139,7 +137,7 @@ Left-click the `Installed` tab and the window should look like this:
 
 Verify the solution builds successfully.
 
-#### Copy Files and Add to Project
+#### Copy files and add to project
 The sample repository includes a few helper classes and a small test dataset. All of the files listed below are copied from the `C:\SourceCode\transfer-api-samples` cloned repository and added underneath the `C:\SourceCode\Relativity.Transfer.Sample\Relativity.Transfer.Sample` directory.
 
 * Create a `Resources` solution folder
@@ -168,7 +166,7 @@ The window should look like this:
 
 Verify the solution builds successfully.
 
-#### Update File Properties
+#### Update file properties
 When adding existing files to a project, the `Copy to Output Directory` File property is set to `Do not copy` by default. Update all of the specified File properties to ensure those files are copied to the build directory.
 
 * Hold the `SHIFT` key and left-click all files within the `Resources` folder and `LogConfig.xml` (6 files)
@@ -199,7 +197,7 @@ The [Json.NET](https://www.newtonsoft.com/json) is a popular JSON library that h
 
 Copy and paste the source below into the `App.config` file.
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -220,12 +218,12 @@ Copy and paste the source below into the `App.config` file.
 
 </details>
 
-#### Replace Main Method and Add Helpers
+#### Replace Main method and add helpers
 The `Program.cs` class provides a skeleton to setup TAPI and perform simple and advanced transfers.
 
 Copy and paste the source below to replace the existing `Main()` method and add several helper methods.
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 namespace Relativity.Transfer.Sample
@@ -410,6 +408,19 @@ namespace Relativity.Transfer.Sample
 ```
 </details>
 
+Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
+
+### General concepts and configuration
+The next several sections incrementally configure and construct all required objects.
+
+* [Cancellation](#cancellation)
+* [Initialize Global Settings](#initialize-globalsettings)
+* [Create ClientConfiguration Object](#create-clientconfiguration-object)
+* [Create ITransferLog Object](#create-itransferlog-object)
+* [Create IRelativityTransferHost Object](#create-irelativitytransferhost-object)
+* [Create ITransferClient Object](#create-itransferclient-object)
+
+#### Cancellation
 The use of cancellation token is strongly recommended with potentially long-running transfer operations. The sample wraps a `CancellationTokenSource` object within a using block, assigns the `CancellationToken` object to a variable, and passes the variable to all asynchronous methods.
 
 ```csharp
@@ -420,26 +431,12 @@ using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSo
 }
 ```
 
-Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
-
-### General Concepts and Configuration
-The next several sections incrementally configure and construct all required objects.
-
-* [Initialize Global Settings](#initialize-global-settings)
-* [Create ClientConfiguration Object](#create-clientconfiguration-object)
-* [Create ITransferLog Object](#create-itransferlog-object)
-* [Create IRelativityTransferHost Object](#create-irelativitytransferhost-object)
-* [Create ITransferClient Object](#create-itransferclient-object)
-
-#### Cancellation
-
-
-#### Initialize Global Settings
+#### Initialize GlobalSettings
 The `InitializeGlobalSettings()` method is responsible for configuring the [Global Settings](#global-settings).
 
 Find the `InitializeGlobalSettings()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static void InitializeGlobalSettings()
@@ -467,12 +464,12 @@ private static void InitializeGlobalSettings()
 ```
 </details>
 
-#### Create ClientConfiguration Object
+#### Create ClientConfiguration object
 The `CreateClientConfiguration()` method is responsible for creating and configuring the [ClientConfiguration](#clientconfiguration) instance.
 
 Find the `CreateClientConfiguration()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static ClientConfiguration CreateClientConfiguration()
@@ -492,12 +489,12 @@ private static ClientConfiguration CreateClientConfiguration()
 ```
 </details>
 
-#### Create ITransferLog Object
+#### Create ITransferLog object
 The `CreateTransferLog()` method uses a Relativity Logging XML configuration file to create the [ITransferLog](#logging) instance used to log transfer details, warnings, and errors. It's entirely possible for API users to create an `ITransferLog` derived class object and use virtually any logging framework; however, the `RelativityTransferLog` class object is provided to simplify integration with Relativity Logging. The `LogConfig.xml` is designed to write all entries to a rolling log file within the user profile `%TEMP%` directory and a local [SEQ](https://getseq.net) log server.
 
 Find the `CreateTransferLog()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static ITransferLog CreateTransferLog()
@@ -518,12 +515,12 @@ private static ITransferLog CreateTransferLog()
 ```
 </details>
 
-#### Create IRelativityTransferHost Object
+#### Create IRelativityTransferHost object
 The `CreateRelativityTransferHost()` method defines a [RelativityConnectionInfo](#relativityconnectioninfo) object to specify the Relativity URL, credentials, and optional workspace artifact ID. The URL and credentials are used by for all required HTTP and REST endpoints and TAPI supports both basic authentication and OAuth2. For more information about Relativity OAuth2 clients, see [Relativity Documentation Site]("https://help.relativity.com/RelativityOne/Content/Relativity/Authentication/OAuth2_clients.htm"). Once constructed, the `RelativityConnectionInfo` object is passed to the [RelativityTransferHost](#relativitytransferhost) constructor.
 
 Find the `CreateRelativityTransferHost()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog log)
@@ -543,18 +540,22 @@ private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog
 ```
 </details>
 
-Now update the following constants with valid parameters:
+<br>
+<div style="background-color: #ffffcc;border-left: 6px solid #ffeb3b;color:black;padding:12px">
+<strong>Ensure the following parameters are updated:</strong>
 
-* The Relativity instance URL.
-* The Relativity username and password.
-* The workspace artifact identifier.
+* The Relativity instance URL
+* The Relativity username and password
+* The workspace artifact identifier
 
-#### Create ITransferClient Object
+</div>
+
+#### Create ITransferClient object
 If a workspace artifact is specified within the `RelativityConnectionInfo` object, the `CreateClientAsync()` method is designed to query the workspace, determine which transfer clients are supported (Aspera, file share, or HTTP), and choose the optimal client. *If* a client is specified within the `ClientConfiguration` object, the `CreateClient()` method explicitly instructs TAPI to construct a certain type of client. There may be circumstances where direct access to the file share is guaranteed and the FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
 
 Find the `CreateClientAsync()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static async Task<ITransferClient> CreateClientAsync(IRelativityTransferHost host, ClientConfiguration configuration, CancellationToken token)
@@ -588,7 +589,7 @@ private static async Task<ITransferClient> CreateClientAsync(IRelativityTransfer
 
 Verify the solution builds successfully. Next, Start or debug the project and ensure a transfer client object is constructed and the application terminates with a zero exit code.
 
-### Basic Demo
+### Basic demo
 At this point, all helper methods have been defined, the transfer objects have been setup, and the basic demo can be written.
 
 For this demo, the approach is as follows:
@@ -599,10 +600,10 @@ For this demo, the approach is as follows:
 * Create a download transfer request for the 1 test file that was just uploaded
 * Submit the transfer request, await completion, and display the results
 
-#### Replace DemoBasicTransferAsync Method
+#### Replace DemoBasicTransferAsync method
 Find the `DemoBasicTransferAsync` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, CancellationToken token)
@@ -655,14 +656,14 @@ private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, C
 ```
 </details>
 
-#### Get Workspace File Share Object
+#### Get workspace file share object
 When a Relativity workspace is created, the user must specify a resource pool in order to assign a default file share resource server. Not only is this a convenient way to access file share details but *the user is not required to be an admin to directly access the file share resource server objects.*
 
 To simplify acquiring workspace and file share details, the `IRelativityTransferHost` and `ITransferClient` objects both support a `GetWorkspaceAsync` method to retrieve a `Workspace` object. Given the `Workspace` object, the `DefaultFileShare` property can be used to access the UNC path.
 
 Find the `GetWorkspaceDefaultFileShareAsync` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
@@ -677,7 +678,7 @@ private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync
 ```
 </details>
 
-#### Create Upload TransferRequest
+#### Create upload TransferRequest object
 Given the workspace default file share, the upload target path is defined and the `TransferRequest` object is constructed using the `ForUpload` overload:
 
 ```csharp
@@ -695,7 +696,7 @@ Console2.WriteStartHeader("Basic Transfer - Upload");
 TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, uploadTargetPath);
 ```
 
-#### Create Download TransferRequest
+#### Create download TransferRequest object
 Fundamentally, the download request is just the inverse of the upload request. The remote path is now the source path and the local path is now the target path. The `TransferRequest` object is constructed using the `ForDownload` overload:
 
 ```csharp
@@ -712,7 +713,7 @@ TransferPath remotePath = new TransferPath
 TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, downloadTargetPath);
 ```
 
-#### Execute TransferAsync
+#### Execute TransferAsync method
 The request object is supplied to `TransferAsync` and the caller awaits completion. TAPI internally manages transfer errors and automatically retries *just the files that haven't already been transferred.* Once the transfer completes, the `ITransferResult` object provides key transfer metric and telemetry data.
 
 ```csharp
@@ -731,14 +732,14 @@ Console2.WriteLine("Basic download transfer completed.");
 DisplayTransferResult(downloadResult);
 ```
 
-#### Basic Start or Debug
+#### Basic start or debug
 Start or debug the project and ensure 1 file is successfully uploaded/downloaded and the application terminates with a zero exit code. Navigate to the `%TEMP%\Relativity-Transfer\Sample` directory using File Explorer, open the latest date-encoded log file with your favorite text editor, and review the log entries. Because log files can be difficult to view or parse, Relativity Logging was configured with the [Seq](https://getseq.net/) sink - [click here to view the Seq logs](http://localhost:5341/#/events) if Seq has been separately installed.
 
-For first time executaions, Windows may popup a `Windows Defender` window like the one below. If this is presented, click the "Allow access" button.
+For first time executions, Windows may popup a `Windows Defender` window like the one below. If this is presented, click the "Allow access" button.
 
 ![windowsdefender-firewall](https://user-images.githubusercontent.com/32276163/45306961-b2c22580-b4d2-11e8-8e9b-8ee90168d7f9.png)
 
-### Advanced Demo
+### Advanced demo
 The basic demo highlights core concepts required by any TAPI-based application. Real-world applications typically involve large or even massive datasets that not only require better transfer request management but provide real-time data rate, progress, and time remaining to their users.
 
 For this demo, the approach is as follows:
@@ -755,10 +756,10 @@ For this demo, the approach is as follows:
 * Add the search result remote transfer paths to the job
 * Change the data rate, await completion, and display the results
 
-#### Replace DemoAdvancedTransferAsync Method
+#### Replace DemoAdvancedTransferAsync method
 Find the `DemoAdvancedTransferAsync()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
@@ -831,12 +832,12 @@ private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host
 ```
 </details>
 
-#### Create AsperaClientConfiguration Object
+#### Create AsperaClientConfiguration object
 The `CreateAsperaClientConfiguration()` method is responsible for creating and configuring the [AsperaClientConfiguration](#asperaclientconfiguration) object. This object inherits all of the configurable properties found within [ClientConfiguration](#clientconfiguration), adds numerous Aspera specific transfer properties, and assigns `Aspera` to the the `Client` property. This value is later evaluated by the `CreateClientAsync()` method to construct the specified TAPI client.
 
 Find the `CreateAsperaClientConfiguration()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
@@ -860,14 +861,14 @@ private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAspera
 ```
 </details>
 
-#### Search For Specific File Share
-Using a workspace to drive the selected file share is convenient but does not meet all workflow requirements. For example, consider a data migration application to move files from on-premise to RelativityOne. In this scenario, the target workspace may not even exist; however, the migration operator knows precisely which file share should be used. For scenarios like these, the [File Storage Search](#file-storage-search) API is provided.
+#### Search for specific file share
+Using a workspace to drive the selected file share is convenient but doesn't meet all workflow requirements. For example, consider a data migration application to move files from on-premise to RelativityOne. In this scenario, the target workspace may not even exist; however, the migration operator knows precisely which file share should be used. For scenarios like these, the [File Storage Search](#file-storage-search) API is provided.
 
 ***Note:**  You must be an admin to retrieve file shares from the instance. See [Targeting File Shares](#targeting-file-shares) for more details.*
 
 Find the `GetFileShareAsync()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTransferHost host, int number, CancellationToken token)
@@ -909,12 +910,12 @@ Relativity.Transfer.Aspera.AsperaClientConfiguration configuration = CreateAsper
 configuration.TargetFileShare = fileShare;
 ```
 
-#### Search Local Source Paths
+#### Search local source paths
 Data transfer workflows often involve large datasets stored on network servers or other enterprise storage devices. In many cases, the data transfer operator would like to transfer all of the files contained within a specified path. The [IPathEnumerator](local-and-remote-enumeration) object is constructed from `ITransferClient` and can be used to efficiently search for and create `TransferPath` objects. For large datasets (IE 1M+), the same API supports serializing the results to disk and batching the results in smaller chunks. Since the test dataset is small, the enumeration option is used. Once the local dataset search is completed, the `EnumeratedPathsResult` object is returned to include all discovered `TransferPath` objects and other useful metrics.
 
 Find the `SearchLocalSourcePathsAsync()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath, CancellationToken token)
@@ -936,12 +937,12 @@ private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITran
 ```
 </details>
 
-#### Subscribe Transfer Events
+#### Subscribe to transfer events
 Since transfer events are used for both upload and download operations, the demo wraps this within the `CreateTransferContext()` method to construct the [TransferContext](#transfercontext) object and write event details to the console. This object is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.
 
 Find the `CreateTransferContext()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static TransferContext CreateTransferContext()
@@ -983,7 +984,7 @@ private static TransferContext CreateTransferContext()
 ```
 </details>
 
-#### Create Job TransferRequest Objects
+#### Create job TransferRequest objects
 When defining a `TransferRequest` object to support transfer jobs, `TransferPath` objects are *never* added to the request as this responsibility is handled by the transfer job. Among the available overloads, the `ForUploadJob()` and `ForDownloadJob()` methods accept a target path and `TransferContext` object.
 
 ```csharp
@@ -1001,7 +1002,7 @@ string downloadTargetPath = directory.Path;
 TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
 ```
 
-#### Transfer Jobs
+#### Transfer jobs
 The transfer client is used to construct a new transfer job where `TransferPath` objects can be added at any point in time. It's understood that files are *immediately* transferred in the order that they've been added to the job. The `ITransferJob` instance is wrapped in a using block so that all resources are properly disposed.
 
 ```csharp
@@ -1024,12 +1025,12 @@ using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token)
 }
 ```
 
-#### Change the Data Rate
+#### Change the data rate
 One of the other advantages with using a job is that it provides the API caller an object to perform job-specific operations like increasing or decreasing the data rate. Because not all TAPI client support this feature, a convenient `IsDataRateChangeSupported` property is provided by the `ITransferJob` object.
 
 Find the `ChangeDataRateAsync()` empty method in the `Program` class and replace with the following:
 
-<details><summary>Click to View Source</summary>
+<details><summary>View source code</summary>
 
 ```csharp
 private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToken token)
@@ -1044,7 +1045,7 @@ private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToke
 ```
 </details>
 
-#### Advanced Start or Debug
+#### Advanced start or debug
 Start or debug the project and ensure 5 files are successfully uploaded/downloaded and the application terminates with a zero exit code.
 
 The following sections provide detailed reference for the Transfer API operations illustrated by the sample program above.
@@ -1057,10 +1058,10 @@ The next sections cover TAPI usage including:
 * [ClientConfiguration](#clientconfiguration)
 * [AsperaClientConfiguration](#asperaclientconfiguration)
 * [ITransferClient](#itransferclient)
-* [Dynamic Transfer Client](#dynamic-transfer-client)
+* [Dynamic transfer client](#dynamic-transfer-client)
 * [ITransferClientStrategy](#itransferclientstrategy)
-* [Client Support Check](#client-support-check)
-* [Connection Check](#connection-check)
+* [Client support check](#client-support-check)
+* [Connection check](#connection-check)
 * [IRemotePathResolver](#iremotepathresolver)
 * [IRetryStrategy](#iretrystrategy)
 * [TransferPath](#transferpath)
@@ -1068,19 +1069,21 @@ The next sections cover TAPI usage including:
 * [ITransferResult](#itransferresult)
 * [TransferStatus](#transferstatus)
 * [ITransferJob](#itransferjob)
-* [Transfer via Request](#transfer-via-request)
-* [Transfer via Job](#transfer-via-job)
-* [Targeting File Shares](#targeting-file-shares)
-* [Local and Remote Enumeration](#local-and-remote-enumeration)
-* [Change Job Data Rate](#change-job-data-rate)
-* [Transfer Events and Statistics](#transfer-events-and-statistics)
-* [Transfer Application Performance Monitoring and Metrics](#transfer-application-performance-monitoring-and-metrics)
-* [Error Handling and ITransferIssue](#error-handling-and-itransferissue)
-* [Packaging and RCC Package Library](#packaging-and-rcc-package-library)
-* [Global Settings](#global-settings)
+* [Transfer via request](#transfer-via-request)
+* [Transfer via job](#transfer-via-job)
+* [Workspaces and the default file share](#workspaces-and-the-default-file-share)
+* [Targeting file shares](#targeting-file-shares)
+* [Local and remote enumeration](#local-and-remote-enumeration)
+* [Change job data rate](#change-job-data-rate)
+* [Transfer events and statistics](#transfer-events-and-statistics)
+* [Transfer application performance monitoring and metrics](#transfer-application-performance-monitoring-and-metrics)
+* [Error handling and ITransferIssue](#error-handling-and-itransferissue)
+* [GlobalSettings](#globalsettings)
 * [Logging](#logging)
+* [Relativity version check](#relativity-version-check)
 * [DateTime object values](#datetime-object-values)
-* [Binding Redirect for Json.NET](#binding-redirect-for-json.net)
+* [Binding redirect for Json.NET](#binding-redirect-for-json.net)
+* [Packaging and RCC package library](#packaging-and-rcc-package-library)
 
 ### RelativityConnectionInfo
 The first thing you must do is construct a `RelativityConnectionInfo` object, which requires the following:
@@ -1091,7 +1094,7 @@ The first thing you must do is construct a `RelativityConnectionInfo` object, wh
 | Credential      | The Relativity credential used to authenticate HTTP/REST API calls.                                                            |
 | WorkspaceId     | The workspace artifact identifier used to auto-configure the request with file share, credential, and other transfer settings. |
 
-***Note:**  The workspace artifact identifier can be set to `Workspace.AdminWorkspaceId` if the workspace is unknown or the transfer is manually configured. See [Targeting File Shares](#targeting-file-shares) for more details.*
+***Note:**  The workspace artifact identifier can be set to `Workspace.AdminWorkspaceId` if the workspace is unknown or the transfer is manually configured. See [Admin Workspace](#admin-workspace) and [Targeting File Shares](#targeting-file-shares) for more details.*
 
 The following example uses basic username/password credentials.
 
@@ -1104,7 +1107,6 @@ var connectionInfo = new RelativityConnectionInfo(
     WorkspaceId);
 ```
 
-
 When using an OAUTH2 client to authenticate, the bearer token is provided instead.
 
 ```csharp
@@ -1116,18 +1118,24 @@ var connectionInfo = new RelativityConnectionInfo(
     WorkspaceId);
 ```
 
-
-When manually configuring the transfer, do **not** pass the workspace artifact. 
+When manually configuring the transfer, do **not** pass the workspace artifact. In this scenario, the [Admin Workspace](#admin-workspace) is implicitly specified.
 
 ```csharp
-// This will NOT auto-configure the transfer.
+// This won't auto-configure the transfer.
 var connectionInfo = new RelativityConnectionInfo(
     new Uri("http://localhost/Relativity"),
     new BasicAuthenticationCredential("relativity.admin@relativity.com", "MyUbreakablePassword777!"));
 ```
 
 ### RelativityTransferHost
-Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block.
+Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block. This object has several key responsibilities including:
+
+* Defines *which* Relativity instance is used for all transfer requests
+* Use `CreateClient` to [construct a specific ITransferClient](#itransferclient) object
+* Use `CreateClientAsync` to [dynamically construct the best ITransferClient](#dynamic-transfer-client) object
+* Use `GetWorkspaceAsync` to [retrieve a workspace object](#workspaces-and-the-default-file-share) that includes the default file share
+* Use `CreateFileStorageSearch` to [retrieve all file share](#file-storage-search) objects and target a specific file share
+* Use `VersionCheckAsync` to [perform a Relativity version check](#relativity-version-check)
 
 ```csharp
 using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo))
@@ -1135,7 +1143,6 @@ using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo)
 ```
 
 ***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
-
 
 ### ClientConfiguration
 Before you can create a client, you have to provide a `ClientConfiguration` instance. If you know which client you would like to construct, choose a strongly-typed class object that derives from `ClientConfiguration`. The vast majority of settings contained within this class object are supported by all clients unless otherwise specified.
@@ -1204,7 +1211,6 @@ The Aspera transfer engine defines a large number of properties to customize the
 | UdpPortEndRange               | The UDP end port range used for transferring data.                                                                                                                                                                                                                                                                                                                                        | 33050                      |
 | WriteThreadCount              | The number of threads the Aspera receiver uses to write the file contents to the destination disk drive. It takes effect on both client and server, when acting as a receiver. The default of zero causes the Aspera receiver to use its internal default, which may vary by operating system. This is a performance-tuning parameter for an Aspera receiver.                             | 0                          |
 
-
 ### ITransferClient
 The API caller uses the transfer host to construct the appropriate transfer client. This object implements `IDisposable` to manage client specific object lifecycles. **MEF** is used to dynamically construct the appropriate instance.
 
@@ -1233,7 +1239,6 @@ using (ITransferClient client = host.CreateClient(new ClientConfiguration(existi
 
 ***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
 
-
 ### Dynamic transfer client
 In the above examples, it's understood that the configuration object specifies which client to construct. The `ClientId` property contained within the `ClientConfiguration` object provides MEF enough information to construct the appropriate client.
 
@@ -1246,7 +1251,6 @@ using (ITransferClient client = await host.CreateClientAsync(new ClientConfigura
 ```
 
 ***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly.*
-
 
 ### ITransferClientStrategy
 When using the dynamic transfer client, a strategy design pattern is used to determine the order in which clients are checked for compatibility. Out of the box, the **default strategy** is as follows:
@@ -1264,9 +1268,7 @@ interface ITransferClientStrategy
 }
 ```
 
-
 The caller is provided with the Relativity instance and all discovered transfer client plugin metadata. The returned collection is then used to provide a sorted list of candidates to use.
-
 
 ### Client support check
 Given a transfer client object, the `SupportCheckAsync` method is called to perform the following checks:
@@ -1283,7 +1285,6 @@ using (ITransferClient client = host.CreateClient(new FileShareClientConfigurati
     Console.WriteLine($"Support result: {result.IsSupported}");
 }
 ```
-
 
 ### Connection check
 A connection check performs a small upload and download to not only verify connectivity but to ensure support for reading from and writing to the storage. Likewise, a context object is provided to retrieve status messages. The check can be done on a per-client basis or a single method to exercise connection checks for all available clients.
@@ -1309,7 +1310,6 @@ using (ITransferClient client = host.CreateClient(new FileShareClientConfigurati
 }
 ```
 
-
 ### IRemotePathResolver
 The `ITransferRequest` object exposes optional `SourcePathResolver` and `TargetPathResolver` properties to take a given path and adapt it. The signature for this interface is as follows:
 
@@ -1323,7 +1323,6 @@ interface IRemotePathResolver
 The primary use-case for path resolvers is adding backwards compatibility to a client. For example, the Aspera client employs resolvers to adapt UNC paths to native Aspera UNIX-style paths.
 
 ***Note:** The library provides **AsperaUncPathResolver** for API users that wish to use Aspera clients when using UNC paths exclusively. This is **automatically** used by Aspera jobs as long as `ITransferRequest.RemotePathsInUncFormat` is true.
-
 
 ### IRetryStrategy
 The `ITransferRequest` object exposes an optional `RetryStrategy` property to define a method that dictates how much time is spent in between retry attempts. The signature for this interface is as follows:
@@ -1340,7 +1339,6 @@ The TAPI library provides a `RetryStrategies` static class to provide two common
 * **Exponential backoff** - This is the default strategy where each attempt waits longer by a power of 2.
 * **Fixed Time** - This simply defines a constant wait period regardless of the number of attempts.
 
-
 ### TransferPath
 This object encapsulates a local or remote path and can be found throughout the API. This is a convenient extensibility point to support different kinds of paths.
 
@@ -1355,7 +1353,6 @@ This object encapsulates a local or remote path and can be found throughout the 
 | TargetFileName  | The **optional** target filename. If not specified, this property is automatically updated with the same property defined in the transfer request. |
 
 ***Note:*** Both relative paths and paths transformed via `IRemotePathResolver` are automatically assigned to the `TransferPath` object.
-
 
 ### ITransferRequest
 There are several options to submit transfers and all revolve around the `ITransferRequest` object.
@@ -1379,14 +1376,12 @@ There are several options to submit transfers and all revolve around the `ITrans
 | TargetPathResolver     | The **optional** resolver used to adapt target paths from one format to another. This is set to `NullPathResolver` by default. |
 | TotalBatchCount        | The total number of batches. This is automatically assigned when using batches to transfer. |
 
-
 Although this object can be constructed directly, a number of static methods have been added to simplify construction using several overloads including:
 
 * TransferRequest.ForDownload
 * TransferRequest.ForDownloadJob
 * TransferRequest.ForUpload
 * TransferRequest.ForUploadJob
-
 
 ### ITransferResult
 Once the transfer is complete, the `ITransferResult` object is returned and provides an overall summary.
@@ -1410,7 +1405,6 @@ Once the transfer is complete, the `ITransferResult` object is returned and prov
 | TransferError         | The most important error from the list of registered issues. |
 | TransferRateMbps      | The average file transfer rate, in Mbps units, for the entire request. |
 
-
 ### FileTransferHint
 This enumeration provides hints to better configure or optimize the transfer request.
 
@@ -1419,18 +1413,16 @@ This enumeration provides hints to better configure or optimize the transfer req
 | Natives             | The request involves transferring native files. |
 | BulkLoad            | The request involves transferring bulk load files. |
 
-
 ### TransferStatus
 This enumeration provides the overall transfer status.
 
 | Name                | Description |
 | ------------------- | ------------------------------------- |
-| NotStarted          | The transfer has not started. |
+| NotStarted          | The transfer hasn't started. |
 | Failed              | The transfer contains one or more paths that failed to transfer. These errors are non-fatal and can be retried. |
 | Fatal               | The transfer stopped due to a fatal error. |
 | Successful          | The transfer is successful. |
 | Canceled            | The transfer is canceled. |
-
 
 ### ITransferJob
 Once a client is constructed, transfer jobs are created in one of two ways (see below). Once constructed, the job adheres to a common structure regardless of client. The job has several key responsibilities including:
@@ -1445,7 +1437,6 @@ Once a client is constructed, transfer jobs are created in one of two ways (see 
 * Retrieving a list of all processed job paths.
 
 ***Note:** This object implements the `IDisposable` interface to ensure the life-cycle is managed properly. If any operations are performed on the job after the object has been disposed, an `ObjectDisposedException` will be thrown.*
-
 
 ### Transfer via request
 If the **list of source paths is already known**, you simply construct the request object, call `TransferAsync`, and await the result.
@@ -1489,14 +1480,55 @@ using (ITransferJob job = await client.CreateJobAsync(request))
 
 ***Note:** Multiple jobs can be created; however, bandwidth constraints can lead to transfer errors.*
 
+### Workspaces and the default file share
+The vast majority of workflows within Relativity center on the workspace. Additionally, the workspace configuration is responsible for defining several resource servers including the default file repository. API users can retrieve a `Workspace` object through `IRelativityTransferHost` to assist configuring the transfer request.
 
-### Targeting File Shares
+```csharp
+using (IRelativityTransferHost host = new RelativityTransferHost(this.connectionInfo))
+{
+    // Use the workspace specified within RelativityConnectionInfo.
+    Workspace workspace1 = await host.GetWorkspaceAsync(token).ConfigureAwait(false);
+    RelativityFileShare fileShare1 = workspace1.DefaultFileShare;
+
+    // Or you can specify the workspace instead.
+    const int WorkspaceId = 1234567;
+    Workspace workspace2 = await host.GetWorkspaceAsync(WorkspaceId, token).ConfigureAwait(false);
+    RelativityFileShare fileShare2 = workspace2.DefaultFileShare;
+}
+```
+
+The `Workspace` object provides the following properties:
+
+| Property                     | Description |
+| ---------------------------- |---------------------------------------------------------------------------------------------------------------------------------- |
+| ArtifactId                   | The workspace artifact identifier.                                                                                                |
+| DefaultFileShare             | The default file share associated with this workspace. This is always null for the `AdminWorkspace` object.                       |
+| DefaultFileShareUncPath      | The full UNC path for the default file share associated with this workspace. This is always null for the `AdminWorkspace` object. |
+| DistributedSqlResourceServer | The distributed SQL resource server associated with this workspace. This is always null for the `AdminWorkspace` object.          |
+| DownloadHandlerUrl           | The download handler URL. This is always null for the `AdminWorkspace` object.                                                    |
+| FileShareResourceServers     | The list of all file share resource servers associated with this workspace. This is always empty for the `AdminWorkspace` object. |
+| Guids                        | The list of all artifact unique identifiers.                                                                                      |
+| Name                         | The workspace name.                                                                                                               |
+| PrimarySqlResourceServer     | The primary SQL resource server associated with this workspace. This is always null for the `AdminWorkspace` object.              |
+| SqlResourceServers           | The list of all SQL resource servers associated with this workspace. This is always empty for the `AdminWorkspace` object.        |
+
+#### Admin workspace
+The `Workspace` object also defines the `AdminWorkspaceId` constant and the `AdminWorkspace` static property for situations where a workspace artifact cannot be specified or the API user would like to [target a file share](#targeting-file-shares) instead of using the default file share.
+
+```csharp
+// Obtain the admin workspace artifact.
+const int WorkspaceId = Workspace.AdminWorkspaceId;
+
+// Or obtain the admin workspace object instead.
+Workspace workspace = Workspace.AdminWorkspace;
+```
+
+### Targeting file shares
 When the `IRelativityTransferHost` object is constructed, the API user is required to supply a `RelativityConnectionInfo` instance. This object includes the workspace artifact identifier and is used by transfer clients to setup the transfer using the default file repository. This is  known as auto-configuration and is ideal for API users because it simplifies the transfer setup process.
 
-Although many Relativity applications are geared around the workspace, there are situations where the workspace may not be known, does not exist, or the application simply wants to specify a target file share. For more advanced transfer scenarios, the `IFileStorageSearch` API is used to retrieve file shares and the `ClientConfiguration` object is assigned the target file share.
+Although many Relativity applications are geared around the workspace, there are situations where the workspace may not be known, doesn't exist, or the application simply wants to specify a target file share. For more advanced transfer scenarios, the `IFileStorageSearch` API is used to retrieve file shares and the `ClientConfiguration` object is assigned the target file share.
 
-
-#### Resource Pools and Security
+#### Resource pools and security
 The workspace represents both a functional and security boundary required by many Relativity API's. The resource pool is the set of servers and file repositories associated with the workspace. Bypassing workspaces and querying these objects directly represents a security risk and, as such, requires `View Admin Repository` Admin Operations rights. In short, the API user must have **Admin Rights** to search for *all* file shares or specify *non-workspace* search criteria.
 
 #### RelativityFileShare
@@ -1516,8 +1548,7 @@ This object represents a standard file share resource server and includes severa
 | TenantId           | The tenant identifier associated with this file storage. This is only assigned when `CloudInstance` is `true`. |
 | Url                | The URL that represents the file storage location or path. |
 
-
-#### File Storage Search
+#### File storage search
 The `IFileStorageSearch` API is constructed from the `IRelativityTransferHost` object and used to search for and identify file shares. Similar to other TAPI methods, a context object provides additional configuration details. Since none of the context properties are assigned, the example below searches for all file shares.
 
 ```csharp
@@ -1536,8 +1567,7 @@ using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo)
 }
 ```
 
-
-#### Search Options
+#### Search options
 The search criteria is exposed through the `FileStorageSearchContext` object. **Admin rights are required for all non-workspace search criteria** and includes the following search options:
 
 | Property                           | Description                                                                                                                                                                                                      |
@@ -1547,10 +1577,9 @@ The search criteria is exposed through the `FileStorageSearchContext` object. **
 | ResourceServerCondition            | The search is filtered by a resource server condition.                                                                                      |
 | ResourceServerId                   | The search is filtered by a resource server artifact identifier.                                                                                                                                                 |
 | WorkspaceCondition                 | The search is filtered by a workspace condition.                                                                                            |
-| WorkspaceId                        | The search is filtered by a workspace artifact identifier. **All file shares can be retrieved by setting this value to `Workspace.AdminWorkspaceId` but searching by admin workspace requires admin rights.** |
+| WorkspaceId                        | The search is filtered by a workspace artifact identifier. All file shares can be retrieved by setting this value to [Workspace.AdminWorkspaceId](#admin-workspace) **but requires admin rights.** |
 
 ***Note:** All condition search options support standard Relativity query operators.*
-
 
 The following example uses the context to search for all files shares within the specified workspace:
 
@@ -1584,9 +1613,8 @@ FileStorageSearchContext context = new FileStorageSearchContext { WorkspaceId = 
 FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
 ```
 
-
-#### Search Results
-The `SearchAsync` returns a `FileStorageSearchResults` object to expose all search results.
+#### Search results
+The `SearchAsync` returns a `FileStorageSearchResults` object to provide all search results.
 
 | Property                           | Description                                                                                                                                                                                                      |
 | ---------------------------------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1604,8 +1632,7 @@ const int FileShareArtifactID = 1049366;
 RelativityFileShare fileShare = results.GetRelativityFileShare(FileShareArtifactID);
 ```
 
-
-#### Specify a File Share
+#### Specify a file share
 Given a file share object, the target file share is assigned within the `ClientConfiguration` object.
 
 ```csharp
@@ -1614,14 +1641,12 @@ ClientConfiguration configuration = new ClientConfiguration();
 configuration.TargetFileShare = fileShare;
 ```
 
-***Note:** When specifying a target file share and using **remote** UNC paths, it's imperative for the UNC paths to share the same base path as the file share. This can be problematicc for transfer clients like Aspera that do not support native UNC paths and reinforces why relative paths should always be favored.*
+***Note:** When specifying a target file share and using **remote** UNC paths, it's imperative for the UNC paths to share the same base path as the file share. This can be problematic for transfer clients like Aspera that doesn't support native UNC paths.*
 
-
-### Local and Remote Enumeration
+### Local and remote enumeration
 So far, the examples have included a small number of transfer paths. What if you want to create transfer paths from one or more search paths? More importantly, what about datasets consisting of hundreds of thousands or even millions of paths? Due to the RAM and CPU required to manage such large datasets, a different approach is required.
 
 The `IPathEnumerator` interface includes the following methods:
-
 
 ```csharp
 public interface IPathEnumerator
@@ -1641,11 +1666,9 @@ A path enumerator object is capable of providing the following functionality:
 * Use serialization to persist `TransferPath` objects to disk.
 * The `SerializedBatch` object details the file/byte counts and the path on disk.
 
-
 As the examples below demonstrate, enumeration is slightly easier than batching because there are fewer moving parts. The decision to use one over the other ultimately comes down to the size of the dataset being transferred.
 
 The general rule of thumb: use enumeration **when are are fewer than 1M files**; otherwise, serialization should be used.
-
 
 #### Creating the IPathEnumerator
 The `ITransferClient` is responsible for creating an`IPathEnumerator` object. The ability to enumerate local paths is provided by TAPI; however, enumerating remote paths is entirely dependent on the client. When creating the object, the API caller is required to specify whether to create a local or remote instance.
@@ -1659,7 +1682,6 @@ using (ITransferClient client = host.CreateClient(clientConfiguration))
 }
 ```
 
-
 #### Enumeration properties and events
 All enumeration properties and events are exposed through the `PathEnumeratorContext` object and include:
 
@@ -1667,7 +1689,7 @@ All enumeration properties and events are exposed through the `PathEnumeratorCon
 | ---------------------------------- |----------------------------------------------------------------------------------- |
 | Configuration                      | The `ClientConfiguration` object to provide enumeration configuration options. |
 | FileNames                          | The **optional** list of filenames to filter during the search. |
-| FileShare                          | The **optional** fileshare to search (remote only). |
+| FileShare                          | The **optional** file share to search (remote only). |
 | MaxDegreeOfDirectoryParallelism    | The degree of parallelism to search **local** directories. The `Environment.ProcessorCount` value is used by default. |
 | MaxDegreeOfFileParallelism         | The degree of parallelism to search **local** files. The `Environment.ProcessorCount` value is used by default. |
 | MaxDegreeOfRemotePagingParallelism | The degree of parallelism to apply when paging is used to search **remote** directories or files. The `Environment.ProcessorCount` value is used by default. |
@@ -1679,7 +1701,6 @@ All enumeration properties and events are exposed through the `PathEnumeratorCon
 | SearchPaths                        | The list of local or remote paths to search. |
 | SyncBatchTotals                    | Enables or disables whether to update all serialized JSON batch files with total byte/file counts **during** the search process. The same counts are automatically updated once the search is completed. |
 | TargetPath                         | The target path applied to all enumerated or serialized `TransferPath` objects. |
-
 
 The following example demonstrates how a typical context object is constructed.
 
@@ -1698,8 +1719,7 @@ context.PathError += (sender, args) => { };
 context.Progress += (sender, args) => { };
 ```
 
-
-#### Enumerating Local or Remote Paths
+#### Enumerating local or remote paths
 The `EnumerateAsync` method asynchronously performs the local or remote search and returns a result object containing the list of all enumerated paths.
 
 ```csharp
@@ -1712,7 +1732,7 @@ EnumeratedPathsResult result = await pathEnumerator.EnumerateAsync(pathEnumerato
 IEnumerable<TransferPath> paths = result.Paths;
 ```
 
-#### Serializing Local or Remote Paths
+#### Serializing local or remote paths
 The `SerializeAsync` method asynchronously performs the local or remote search and returns a result object containing the list of all serialized batches.
 
 ```csharp
@@ -1730,12 +1750,9 @@ SerializedPathsResult result = await pathEnumerator.SerializeAsync(batchDirector
 IEnumerable<SerializedBatch> batches = result.Batches;
 ```
 
-
 Once the serialization completes, all `TransferPath` objects are persisted to disk in one or more batches. Batch files are in JSON format and saved within the specified batch directory. Existing transfer methods can be called to transfer all paths contained within a given batch object. It's understood that batching doesn't change existing transfer specific API's; however, it's understood that **statistics are relative to the batch being transferred**.
 
-
 The following example is a typical use-case for splitting each batch into a separate transfer job.
-
 
 ```csharp
 // Assume the request has already been created and properly configured.
@@ -1753,8 +1770,7 @@ foreach (SerializedBatch batch in result.Batches)
 }
 ```
 
-
-### Change Job Data Rate (Aspera-Only)
+### Change job data rate (Aspera-Only)
 The `ClientConfiguration` object supports setting a minimum and target data rate. There are situations where the API user would like to *change* the data rate at runtime. To facilitate this feature, the `ITransferJob` object allows each TAPI client to provide an implementation.
 
 This feature is currently limited to the **Aspera client** and any attempt to call this method on a job/client that doesn't support setting or changing the data rate will throw `NotSupportedException`. To provide the API user a cleaner way to use this feature, the `IsDataRateChangedSupported` property is provided.
@@ -1769,7 +1785,6 @@ using (ITransferJob job = await client.CreateJobAsync(request))
     }
 }
 ```
-
 
 ### Transfer events and statistics
 All transfer events are exposed through the optional `TransferContext` object and include:
@@ -1791,7 +1806,6 @@ All transfer events are exposed through the optional `TransferContext` object an
 
 ***Note:*** *The `ITransferRequest` object can take an optional `TransferContext` instance when event handling is required.*
 
-
 ```csharp
 var context = new TransferContext();
 context.LargeFileProgress += (sender, args) => { Console.WriteLine($"Large file progress event. Transfer path: {args.Path}, Chunk number: {args.ChunkNumber}, Total chunks: {args.TotalChunks}"); };
@@ -1804,7 +1818,6 @@ context.TransferStatistics += (sender, args) => { Console.WriteLine($"Transfer s
 // Pass the context when constructing a new request.
 TransferRequest request = TransferRequest.ForUpload(SourcePath, TargetPath, context);
 ```
-
 
 The `TransferStatistics` event is notable because it provides a wealth of useful runtime transfer info. The `TransferStatisticsEventArgs` class exposes an `ITransferStatistics` object and provides the following properties.
 
@@ -1840,12 +1853,10 @@ The `TransferStatistics` event is notable because it provides a wealth of useful
 * *Not all transfer clients are guaranteed to supply all listed statistics.*
 * *The rate at which statistics are raised is defined via StatisticsRateSeconds property defined on TransferContext.*
 
-
-### Transfer Application Performance Monitoring and Metrics
+### Transfer application performance monitoring and metrics
 The section above describes several statistics that applications using TAPI can use for common use-cases like driving the application front-end. However, any application that uses TAPI is equally interested in not only accessing statistics but other key transfer details to monitor the overall application health.
 
 TAPI-enabled applications are able to take advantage of the APM framework by enabling the following opt-in transfer request setting:
-
 
 ```csharp
 ITransferRequest request;
@@ -1857,9 +1868,7 @@ request.Application = "my application";
 request.SubmitApmMetrics = true;
 ```
 
-
 The following table outlines all TAPI APM metric fields:
-
 
 | CustomData Metric Field Name         | Description |
 | ------------------------------------ |----------------------------------------------------------------------------------- |
@@ -1897,7 +1906,6 @@ The following table outlines all TAPI APM metric fields:
 | TotalTransferredFiles                | The total number of transferred files. |
 | WeightedTransferRateMbps             | The weighted transfer rate in Mbps units. |
 | WorkspaceGuid                        | The workspace artifact unique identifier. |
-
 
 ***Notes:*** 
 
@@ -1944,7 +1952,6 @@ The `IssueAttributes` enumeration provides common issues that can be combined (f
 | Timeout              | The issue is due to a connection or command timeout. |
 | Warning              | The issue is a non-fatal warning. |
 
-
 The following example demonstrates how issues are enumerated once the result is returned to the API caller. 
 
 ```csharp
@@ -1963,19 +1970,135 @@ foreach (ITransferIssue issue in result.Issues)
 }
 ```
 
-
 #### Error handling and retry behavior
 If TAPI determines that a transfer error can be retried, it will attempt to retry the transfer for the configured number of attempts before throwing a `TransferException`. The following transfer errors can be configured to be retried:
 
 | Setting Name          | Description |
 | --------------------- | -------------------------------------------------------------------------------------------------------------- |
 | BadPathErrorsRetry    | When TAPI encounters a bad path error from Aspera only, it will use this setting to determine whether it should retry. TAPI has checks in place to prevent paths from being passed in that are invalid or otherwise not able to be transferred, so this error has only been observed during times of high load when Aspera may not be throwing the correct error code. |
-| PermissionErrorsRetry | When TAPI encounters a permission error when transferring using Aspera, Web or Fileshare, it will use this setting to determine whether it should retry. Similar to bad path errors, this will typically be thrown during times of high load, when Aspera is not necessarily throwing the correct error code. |
+| PermissionErrorsRetry | When TAPI encounters a permission error when transferring using Aspera, Web or File share, it will use this setting to determine whether it should retry. Similar to bad path errors, this will typically be thrown during times of high load, when Aspera is not necessarily throwing the correct error code. |
 
 The `ITransferStatistics` object has properties that indicate how many times the above errors have been encountered and retried. This object has a count of TotalBadPathErrors and TotalFilePermissionsErrors, which will be incremented every time these errors are encountered.
 
+### GlobalSettings
+A number of common but optional settings are exposed by the `GlobalSettings` singleton.
 
-### Packaging and RCC Package Library
+| Property                           | Description                                                                                                                                          | Default Value                                      |
+| -----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
+| ApmFireAndForgetEnabled            | Enables or disables whether to submit APM metrics via fire-and-forget or wait for the response.                                                      | true                                               |
+| ApplicationName                    | The name of the application. This value is prefixed within all log entries.                                                                          | TAPI                                               |
+| CacheExpiration                    | The timespan that defines when cached objects will expire. When set to TimeSpan.Zero, caching is effectively disabled.                               | 3600                                               |
+| CloudFileShareRegexPatterns        | The list of regular expressions used to match friendly or FQDN UNC paths to cloud-based file shares using file share numbers and tenant identifiers. | \\files(\d?).+(T\d{3}\w?), \\bcp(\d?).+(T\d{3}\w?) |
+| CommandLineModeEnabled             | Enables or disables whether the runtime behavior is altered for command-line usage.                                                                  | false                                              |
+| FatalHttpStatusCodes               | Specifies the list of fatal HTTP status codes.                                                                                                       | 400, 401, 403, 404                                 | 
+| FatalHttpStatusCodeDetailedMessage | The list of detailed fatal HTTP messages associated with the fatal HTTP status codes.                                                                | Messages                                           |
+| LogPackageSourceFiles              | Specifies whether to log all source files added to the package. If true, the overhead can degrade package performance.                               | false                                              |
+| MaxAllowedTargetDataRateMbps       | The maximum target data rate, in Mbps units, allowed by the transfer API.                                                                            | 600                                                |
+| MaxBytesPerBatch                   | The maximum number of bytes per batch. This is only applicable when transferring via serialized batches.                                             | 100GB                                              |
+| MaxFilesPerBatch                   | The maximum number of files per batch. This is only applicable when transferring via serialized batches.                                             | 50,000                                             |
+| MemoryProtectionScope              | The memory protection scope applied to all data protection API (DPAPI) usage.                                                                        | MemoryProtectionScope.SameProcess                  |
+| NodePageSize                       | The default page size when making Aspera Node REST API calls.                                                                                        | 100                                                |
+| PluginDirectory                    | The directory where all plugins are located.                                                                                                         | Working directory                                  |
+| PluginFileNameFilter               | The file name filter to limit which files are searched for plugins.                                                                                  | *.dll                                              |
+| PluginFileNameMatch                | The file name match expression to limit which files are searched for plugins.                                                                        | Relativity.Transfer                                |
+| PluginSearchOption                 | The file search option used when searching for plugins.                                                                                              | SearchOption.TopDirectoryOnly                      |
+| PrecalcCheckIntervalSeconds        | The number of seconds the pre-calculation values are checked to determine whether the value has changed.                                             | 1.0                                                |
+| SkipTooLongPaths                   | Enable or disable skipping long paths found during search path enumeration.                                                                          | false                                              |
+| StatisticsLogEnabled               | Enables or disables whether to periodically log transfer statistics.                                                                                 | false                                              |
+| StatisticsLogIntervalSeconds       | The interval, in seconds, that transfer statistics are logged.                                                                                        | 2.0                                                |
+| StatisticsMaxSamples               | The maximum number of statistics transfer rate samples to add additional weight to the remaining time calculation.                                   | 8                                                  |
+| TempDirectory                      | The directory used for temp storage.                                                                                                                 | Current user profile temp path (IE %TEMP%)         |
+| ValidateResolvedPaths              | Enable or disable whether to throw a `TransferException` if a path cannot be resolved by an `IRemotePathResolver` instance.                          | true                                               |
+
+***Note:** API users are strongly encouraged to set `ApplicationName` because the value is included within all log entries.*
+
+### Logging
+TAPI supports Relativity Logging and, specifically, the `ILog` object. There may be scenarios, however, where 3rd party developers may wish to use their own logging framework. The `ITransferLog` interface is an extensibility point to address this possible use-case. Similar to other TAPI objects, this interface implements `IDisposable` to manage object lifecycles.
+
+Relativity Logging is the default logging implementation if none is explicitly provided. The next example demonstrates how a Relativity Logging `ILog` object is specified when creating the `RelativityTransferHost` object.
+
+
+```csharp
+ILog log; // Retrieved or constructed via Relativity Logging.
+using (ITransferLog log = new RelativityTransferLog(log))
+using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo, log))
+{}
+```
+
+***Notes:*** 
+
+* *If an ITransferLog object isn't provided, `Relativity.Logging.Log.Logger` is used to retrieve the current Relativity Logging instance.*
+* *If a serious error occurs attempting to retrieve the `ILog` or an exception is thrown performing Relativity Logging setup, the `NullTransferLog` is constructed to avoid unnecessary fatal errors.*
+
+#### Log formatting
+When a transfer request is made, all log entries are prefixed with useful property values to improve log searching and filtering to a particular request. This includes the following values:
+
+* ApplicationName (via `GlobalSettings`)
+* ClientRequestId (via `ITransferRequest`)
+* JobId (via `ITransferRequest`)
+* Direction (via `ITransferRequest`)
+
+***Note:** The `ApplicationName` should be set to an appropriate value. The value defaults to TAPI if not specified.*
+
+#### Log templates
+Relativity Logging uses [Serilog](https://serilog.net/) to format each log entry. Because Relativity Logging is the presumed default, the [Serilog DSL](https://github.com/serilog/serilog/wiki/Writing-Log-Events) is used throughout TAPI. When using a custom `ITransferLog` implementation, the message template and properties must be converted to a string; otherwise, an exception is thrown when calling the String.Format method. [This StackOverflow page](https://stackoverflow.com/questions/26875831/how-do-i-render-a-template-and-its-arguments-manually-in-serilog) provides an example on how to use the `MessageTemplateParser` to convert the Serilog message and properties to a properly formatted string.
+
+### Relativity version check
+TAPI relies heavily on Relativity REST endpoints to support many of the standard features provided by the library. For RelativityOne applications, back-end services are continually evolving and increase the likelihood of compatibility issues. Although TAPI doesn't perform an automatic or implicit Relativity version check, a check is available and *should* be called by new applications as early as possible.
+
+If the specified Relativity version is not supported, the method throws `RelativityNotSupportedException` and should be handled accordingly.
+
+```csharp
+using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo))
+{
+    try
+    {
+        await host.VersionCheckAsync(token).ConfigureAwait(false);
+    }
+    catch (RelativityNotSupportedException)
+    {
+        // Handle the exception.
+    }
+}
+```
+
+Alternatively, a static method exists within the `RelativityTransferHost` class to perform the same test without requiring an `IRelativityTransferHost` instance.
+
+```csharp
+try
+{
+    await RelativityTransferHost.VersionCheckAsync(connectionInfo, token).ConfigureAwait(false);
+}
+catch (RelativityNotSupportedException)
+{
+    // Handle the exception.
+}
+```
+
+### DateTime object values 
+All `DateTime` objects values used by TAPI are in local time.
+
+### Binding redirect for Json.NET
+Relativity and the APIs consumed by Relativity use several different versions of the Newtonsoft.Json library, which can cause assembly version conflict at both build and run time. This is the recommended assembly binding redirect to Newtonsoft.Json version 6.0.0.0 to add to the consuming application (`app.config`) or web (`web.config`) configuration file. It ensures that almost any version of `Newtonsoft.Json` will work with the TAPI:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+      <startup>
+      <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.6.2" />
+      </startup>  
+      <runtime>
+            <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">             
+                 <dependentAssembly>
+                 <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
+                       <bindingRedirect oldVersion="0.0.0.0-10.0.0.0" newVersion="6.0.0.0" />
+                 </dependentAssembly>
+           </assemblyBinding>
+      </runtime>
+</configuration>
+```
+
+### Packaging and RCC package library
 There may be scenarios where the cost of transferring massive datasets consisting of small files is significantly higher than packaging them locally, transferring, and potentially extracting them on the server (extracting may not be necessary, depending on workflow). There may also be scenarios where the API user would like to alter file metadata, such as filename or file timestamps, before adding the native files to the package container.
 
 TAPI extends the existing plugin-based design with a simple means to create or use package libraries through a familiar and consistent object model. Some of the key features include:
@@ -1985,12 +2108,10 @@ TAPI extends the existing plugin-based design with a simple means to create or u
 * Package events are exposed through a new package context object.
 * **Limited to uploads only.**
 
-
-#### RCC Package Library NuGet Packages
+#### RCC package library NuGet packages
 The TAPI repository includes two NuGet packages to provide RCC package library functionality:
 * relativity.transfer.package.rcc32 (32-bit package library)
 * relativity.transfer.package.rcc64 (64-bit package library)
-
 
 #### Package configuration
 Similar to the `ClientConfiguration` object, the `PackageConfiguration` object is used to setup the package request and includes:
@@ -2006,7 +2127,6 @@ Similar to the `ClientConfiguration` object, the `PackageConfiguration` object i
 | PackageLibraryId     | The package library unique identifier. This must be assigned when using a third-party package library. |
 | Password             | The package password. |
 
-
 #### Package events
 Similar to the `TransferContext` object, all package events are exposed through the optional `PackageContext` object and includes:
 
@@ -2016,8 +2136,7 @@ Similar to the `TransferContext` object, all package events are exposed through 
 | PackageProgress      | Occurs when the package progress changes. |
 | PackageCreated       | Occurs when a new transfer package is created. |
 
-
-#### RCC Format Info
+#### RCC format info
 For those that may not be familiar with the RCC format, this was developed in the summer of 2015 to secure custodian-based collections. In a nutshell, it's similar to multi-file ZIP but offers a number of advantages including:
 * The format is based on the SQLCipher port of SQLite.
 * Cross platform support (Windows and OSX).
@@ -2029,8 +2148,7 @@ For those that may not be familiar with the RCC format, this was developed in th
 * Extraction is done through a WPF-based application or RCC extraction API.
 * Compression not yet supported.
 
-
-#### RCC File Types
+#### RCC file types
 A standard RCC is composed of three file types where each file type is uniquely identified. The SQLCipher database format provides a feature where the first 16 Bytes can be specified.
 
 | RCC File Type             | Description                                                                                                                                                                    |
@@ -2039,8 +2157,7 @@ A standard RCC is composed of three file types where each file type is uniquely 
 | \{filename\}-cf.rcc       | The collected file database contains file and item metadata.                                                                                                                   |
 | \{filename\}-cf-xxxx.rcc  | The BLOB database contains the raw collected files. A filename scheme includes numbers to support multi-files once the configured maximum file length is exceeded.             |
 
-
-#### Package Example
+#### Package example
 There are very few differences between a standard transfer request and one involving packaging. Ignoring package configuration and events, the main difference is calling `PackageTransferAsync` instead of `TransferAsync`.
 
 ```csharp
@@ -2088,96 +2205,4 @@ var packageConfiguration = new PackageConfiguration
         new TransferPath { SourcePath = @"C:\MyDataset" },
         @"\\files\PackageUpload");
     var result = await client.PackageTransferAsync(request, context);
-```
-
-
-### Global Settings
-A number of common but optional settings are exposed by the `GlobalSettings` singleton.
-
-| Property                           | Description                                                                                                                                          | Default Value                                      |
-| -----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
-| ApmFireAndForgetEnabled            | Enables or disables whether to submit APM metrics via fire-and-forget or wait for the response.                                                      | true                                               |
-| ApplicationName                    | The name of the application. This value is prefixed within all log entries.                                                                          | TAPI                                               |
-| CacheExpiration                    | The timespan that defines when cached objects will expire. When set to TimeSpan.Zero, caching is effectively disabled.                               | 3600                                               |
-| CloudFileShareRegexPatterns        | The list of regular expressions used to match friendly or FQDN UNC paths to cloud-based file shares using file share numbers and tenant identifiers. | \\files(\d?).+(T\d{3}\w?), \\bcp(\d?).+(T\d{3}\w?) |
-| CommandLineModeEnabled             | Enables or disables whether the runtime behavior is altered for command-line usage.                                                                  | false                                              |
-| FatalHttpStatusCodes               | Specifies the list of fatal HTTP status codes.                                                                                                       | 400, 401, 403, 404                                 | 
-| FatalHttpStatusCodeDetailedMessage | The list of detailed fatal HTTP messages associated with the fatal HTTP status codes.                                                                | Messages                                           |
-| LogPackageSourceFiles              | Specifies whether to log all source files added to the package. If true, the overhead can degrade package performance.                               | false                                              |
-| MaxAllowedTargetDataRateMbps       | The maximum target data rate, in Mbps units, allowed by the transfer API.                                                                            | 600                                                |
-| MaxBytesPerBatch                   | The maximum number of bytes per batch. This is only applicable when transferring via serialized batches.                                             | 100GB                                              |
-| MaxFilesPerBatch                   | The maximum number of files per batch. This is only applicable when transferring via serialized batches.                                             | 50,000                                             |
-| MemoryProtectionScope              | The memory protection scope applied to all data protection API (DPAPI) usage.                                                                        | MemoryProtectionScope.SameProcess                  |
-| NodePageSize                       | The default page size when making Aspera Node REST API calls.                                                                                        | 100                                                |
-| PluginDirectory                    | The directory where all plugins are located.                                                                                                         | Working directory                                  |
-| PluginFileNameFilter               | The file name filter to limit which files are searched for plugins.                                                                                  | *.dll                                              |
-| PluginFileNameMatch                | The file name match expression to limit which files are searched for plugins.                                                                        | Relativity.Transfer                                |
-| PluginSearchOption                 | The file search option used when searching for plugins.                                                                                              | SearchOption.TopDirectoryOnly                      |
-| PrecalcCheckIntervalSeconds        | The number of seconds the pre-calculation values are checked to determine whether the value has changed.                                             | 1.0                                                |
-| SkipTooLongPaths                   | Enable or disable skipping long paths found during search path enumeration.                                                                          | false                                              |
-| StatisticsLogEnabled               | Enables or disables whether to periodically log transfer statistics.                                                                                 | false                                              |
-| StatisticsLogIntervalSeconds       | The interval, in seconds, that transer statistics are logged.                                                                                        | 2.0                                                |
-| StatisticsMaxSamples               | The maximum number of statistics transfer rate samples to add additional weight to the remaining time calculation.                                   | 8                                                  |
-| TempDirectory                      | The directory used for temp storage.                                                                                                                 | Current user profile temp path (IE %TEMP%)         |
-| ValidateResolvedPaths              | Enable or disable whether to throw a `TransferException` if a path cannot be resolved by an `IRemotePathResolver` instance.                          | true                                               |
-
-***Note:** API users are strongly encouraged to set `ApplicationName` because the value is included within all log entries.*
-
-
-### Logging
-TAPI supports Relativity Logging and, specifically, the `ILog` object. There may be scenarios, however, where 3rd party developers may wish to use their own logging framework. The `ITransferLog` interface is an extensibility point to address this possible use-case. Similar to other TAPI objects, this interface implements `IDisposable` to manage object lifecycles.
-
-Relativity Logging is the default logging implementation if none is explicitly provided. The next example demonstrates how a Relativity Logging `ILog` object is specified when creating the `RelativityTransferHost` object.
-
-
-```csharp
-ILog log; // Retrieved or constructed via Relativity Logging.
-using (ITransferLog log = new RelativityTransferLog(log))
-using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo, log))
-{}
-```
-
-
-***Notes:*** 
-
-* *If an ITransferLog object isn't provided, `Relativity.Logging.Log.Logger` is used to retrieve the current Relativity Logging instance.*
-* *If a serious error occurs attempting to retrieve the `ILog` or an exception is thrown performing Relativity Logging setup, the `NullTransferLog` is constructed to avoid unnecessary fatal errors.*
-
-
-#### Log Formatting
-When a transfer request is made, all log entries are prefixed with useful property values to improve log searching and filtering to a particular request. This includes the following values:
-
-* ApplicationName (via `GlobalSettings`)
-* ClientRequestId (via `ITransferRequest`)
-* JobId (via `ITransferRequest`)
-* Direction (via `ITransferRequest`)
-
-***Note:** The `ApplicationName` should be set to an appropriate value. The value defaults to TAPI if not specified.*
-
-
-#### Log Entries and Templates
-Relativity Logging uses [Serilog](https://serilog.net/) to format each log entry. Because Relativity Logging is the presumed default, the [Serilog DSL](https://github.com/serilog/serilog/wiki/Writing-Log-Events) is used throughout TAPI. When using a custom `ITransferLog` implementation, the message template and properties must be converted to a string; otherwise, an exception is thrown when calling the String.Format method. [This StackOverflow page](https://stackoverflow.com/questions/26875831/how-do-i-render-a-template-and-its-arguments-manually-in-serilog) provides an example on how to use the `MessageTemplateParser` to convert the Serilog message and properties to a properly formatted string.
-
-### DateTime object values
-All `DateTime` objects values used by TAPI are in local time.
-
-### Binding redirect for Json.NET
-Relativity and the APIs consumed by Relativity use several different versions of the Newtonsoft.Json library, which can cause assembly version conflict at both build and run time. This is the recommended assembly binding redirect to Newtonsoft.Json version 6.0.0.0 to add to the consuming application (`app.config`) or web (`web.config`) configuration file. It ensures that almost any version of `Newtonsoft.Json` will work with the TAPI:
-
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-      <startup>
-      <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.6.2" />
-      </startup>  
-      <runtime>
-            <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">             
-                 <dependentAssembly>
-                 <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
-                       <bindingRedirect oldVersion="0.0.0.0-10.0.0.0" newVersion="6.0.0.0" />
-                 </dependentAssembly>
-           </assemblyBinding>
-      </runtime>
-</configuration>
 ```
