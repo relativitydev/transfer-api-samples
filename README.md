@@ -57,7 +57,7 @@ The maximum path length now depends on the chosen transfer client.  These limits
 
 If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. And finally, when using the HTTP transfer client, the limit is 222. HTTP is limited to 222 characters due to a current limitation with our enumeration process, which cannot currently account for how the HTTP transfer client renames transferred files using a 36-character GUID. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file won't be transferred.
 
-As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This global setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and won't be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
+As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and won't be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
 
 ## Sample solution and tutorial
 The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications and demonstrates basic and advanced API usage.
@@ -414,7 +414,7 @@ Verify the solution builds successfully. Even though the application performs no
 The next several sections incrementally configure and construct all required objects.
 
 * [Cancellation](#cancellation)
-* [Initialize Global Settings](#initialize-globalsettings)
+* [Initialize GlobalSettings](#initialize-globalsettings)
 * [Create ClientConfiguration Object](#create-clientconfiguration-object)
 * [Create ITransferLog Object](#create-itransferlog-object)
 * [Create IRelativityTransferHost Object](#create-irelativitytransferhost-object)
@@ -432,7 +432,7 @@ using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSo
 ```
 
 #### Initialize GlobalSettings
-The `InitializeGlobalSettings()` method is responsible for configuring the [Global Settings](#global-settings).
+The `InitializeGlobalSettings()` method is responsible for configuring the [GlobalSettings](#globalsettings).
 
 Find the `InitializeGlobalSettings()` empty method in the `Program` class and replace with the following:
 
@@ -442,7 +442,7 @@ Find the `InitializeGlobalSettings()` empty method in the `Program` class and re
 private static void InitializeGlobalSettings()
 {
     Console2.WriteLine();
-    Console2.WriteStartHeader("Initialize Global Settings");
+    Console2.WriteStartHeader("Initialize GlobalSettings");
 
     // Configure settings for a console-based application.
     GlobalSettings.Instance.ApmFireAndForgetEnabled = false;
@@ -516,7 +516,7 @@ private static ITransferLog CreateTransferLog()
 </details>
 
 #### Create IRelativityTransferHost object
-The `CreateRelativityTransferHost()` method defines a [RelativityConnectionInfo](#relativityconnectioninfo) object to specify the Relativity URL, credentials, and optional workspace artifact ID. The URL and credentials are used by for all required HTTP and REST endpoints and TAPI supports both basic authentication and OAuth2. For more information about Relativity OAuth2 clients, see [Relativity Documentation Site]("https://help.relativity.com/RelativityOne/Content/Relativity/Authentication/OAuth2_clients.htm"). Once constructed, the `RelativityConnectionInfo` object is passed to the [RelativityTransferHost](#relativitytransferhost) constructor.
+The `CreateRelativityTransferHost()` method defines a [RelativityConnectionInfo](#relativityconnectioninfo) object to specify the Relativity URL, credentials, and optional workspace artifact ID. The URL and credentials are supplied to all HTTP/REST endpoints and TAPI supports both basic authentication and OAuth2 bearer tokens. For more information about Relativity OAuth2 clients, see [Relativity Documentation Site]("https://help.relativity.com/RelativityOne/Content/Relativity/Authentication/OAuth2_clients.htm"). Once constructed, the `RelativityConnectionInfo` object is passed to the [RelativityTransferHost](#relativitytransferhost) constructor.
 
 Find the `CreateRelativityTransferHost()` empty method in the `Program` class and replace with the following:
 
@@ -1740,7 +1740,7 @@ The `SerializeAsync` method asynchronously performs the local or remote search a
 const bool Local = false;
 IPathEnumerator pathEnumerator = client.CreatePathEnumerator(Local);
 
-// The global settings defines the max number of bytes or files per batch.
+// The GlobalSettings defines the max number of bytes or files per batch.
 // IE Each serialized batch file contains no more than 100GB or 50k files (whichever comes first).
 GlobalSettings.Instance.MaxBytesPerBatch = 107374182400;
 GlobalSettings.Instance.MaxFilesPerBatch = 50000;
