@@ -448,7 +448,7 @@ private static void InitializeGlobalSettings()
     GlobalSettings.Instance.ApmFireAndForgetEnabled = false;
     GlobalSettings.Instance.ApplicationName = "sample-app";
     GlobalSettings.Instance.CommandLineModeEnabled = true;
-    Console2.WriteLine("Configured console settings.");
+    Console2.WriteLine("Configured APM and console settings.");
 
     // This will automatically write real-time entries into the transfer log.
     GlobalSettings.Instance.StatisticsLogEnabled = true;

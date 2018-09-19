@@ -178,13 +178,13 @@ namespace Relativity.Transfer.Sample
 
         private static void InitializeGlobalSettings()
         {
-            Console2.WriteStartHeader("Initialize Global Settings");
+            Console2.WriteStartHeader("Initialize GlobalSettings");
 
             // Configure settings for a console-based application.
             GlobalSettings.Instance.ApmFireAndForgetEnabled = false;
             GlobalSettings.Instance.ApplicationName = "sample-app";
             GlobalSettings.Instance.CommandLineModeEnabled = true;
-            Console2.WriteLine("Configured console settings.");
+            Console2.WriteLine("Configured APM and console settings.");
 
             // This will automatically write real-time entries into the transfer log.
             GlobalSettings.Instance.StatisticsLogEnabled = true;
