@@ -84,7 +84,7 @@ This section creates the C# console application used to support the basic and ad
 * [Add NuGet package references](#add-nuget-package-references)
 * [Copy files and add to project](#copy-files-and-add-to-project)
 * [Update file properties](#update-file-properties)
-* [Update App.config](#update-app.config)
+* [Update App.config](#update-appconfig)
 * [Replace Main method and add helpers](#replace-main-method-and-add-helpers)
 
 #### Clone GIT repository
@@ -540,15 +540,15 @@ private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog
 ```
 </details>
 
-<br>
-<div style="background-color: #ffffcc;border-left: 6px solid #ffeb3b;color:black;padding:12px">
-<strong>Ensure the following parameters are updated:</strong>
+---
+
+Ensure the following parameters are updated:
 
 * The Relativity instance URL
 * The Relativity username and password
 * The workspace artifact identifier
 
-</div>
+---
 
 #### Create ITransferClient object
 If a workspace artifact is specified within the `RelativityConnectionInfo` object, the `CreateClientAsync()` method is designed to query the workspace, determine which transfer clients are supported (Aspera, file share, or HTTP), and choose the optimal client. *If* a client is specified within the `ClientConfiguration` object, the `CreateClient()` method explicitly instructs TAPI to construct a certain type of client. There may be circumstances where direct access to the file share is guaranteed and the FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
@@ -1128,7 +1128,7 @@ var connectionInfo = new RelativityConnectionInfo(
 ```
 
 ### RelativityTransferHost
-Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object lifecycles and should employ a using block. This object has several key responsibilities including:
+Given the `RelativityConnectionInfo` object, the `RelativityTransferHost` object is then constructed. This object implements `IDisposable` to manage object life-cycles and should employ a using block. This object has several key responsibilities including:
 
 * Defines *which* Relativity instance is used for all transfer requests
 * Use `CreateClient` to [construct a specific ITransferClient](#itransferclient) object
@@ -1212,7 +1212,7 @@ The Aspera transfer engine defines a large number of properties to customize the
 | WriteThreadCount              | The number of threads the Aspera receiver uses to write the file contents to the destination disk drive. It takes effect on both client and server, when acting as a receiver. The default of zero causes the Aspera receiver to use its internal default, which may vary by operating system. This is a performance-tuning parameter for an Aspera receiver.                             | 0                          |
 
 ### ITransferClient
-The API caller uses the transfer host to construct the appropriate transfer client. This object implements `IDisposable` to manage client specific object lifecycles. **MEF** is used to dynamically construct the appropriate instance.
+The API caller uses the transfer host to construct the appropriate transfer client. This object implements `IDisposable` to manage client specific object life-cycles. **MEF** is used to dynamically construct the appropriate instance.
 
 ```csharp
 // I need an Aspera client.
@@ -1455,7 +1455,7 @@ using (ITransferClient client = host.CreateClient(configuration))
 This is an ideal approach to take if the number of files is **small** and the required functionality is minimal.
 
 ### Transfer via job
-If the **list of source paths is unknown**, you want to avoid calling `TransferAsync` one file at a time. High-speed clients like Aspera require a significant amount of overhead to setup the transfer request and performance would suffer significantly. To address this scenario, the `ITransferJob` object can be constructed via the client instance. The general idea is to construct a job, continually add transfer paths to the queue as they become known, and then await completion. Beyond large transfers, the `ITransferJob` object provides several other functional advantages such as changing the data rate at runtime and a predictable object lifecycle.
+If the **list of source paths is unknown**, you want to avoid calling `TransferAsync` one file at a time. High-speed clients like Aspera require a significant amount of overhead to setup the transfer request and performance would suffer significantly. To address this scenario, the `ITransferJob` object can be constructed via the client instance. The general idea is to construct a job, continually add transfer paths to the queue as they become known, and then await completion. Beyond large transfers, the `ITransferJob` object provides several other functional advantages such as changing the data rate at runtime and a predictable object life-cycle.
 
 It's understood that files are transferred as soon as they're added to the job queue.
 
@@ -2013,7 +2013,7 @@ A number of common but optional settings are exposed by the `GlobalSettings` sin
 ***Note:** API users are strongly encouraged to set `ApplicationName` because the value is included within all log entries.*
 
 ### Logging
-TAPI supports Relativity Logging and, specifically, the `ILog` object. There may be scenarios, however, where 3rd party developers may wish to use their own logging framework. The `ITransferLog` interface is an extensibility point to address this possible use-case. Similar to other TAPI objects, this interface implements `IDisposable` to manage object lifecycles.
+TAPI supports Relativity Logging and, specifically, the `ILog` object. There may be scenarios, however, where 3rd party developers may wish to use their own logging framework. The `ITransferLog` interface is an extensibility point to address this possible use-case. Similar to other TAPI objects, this interface implements `IDisposable` to manage object life-cycles.
 
 Relativity Logging is the default logging implementation if none is explicitly provided. The next example demonstrates how a Relativity Logging `ILog` object is specified when creating the `RelativityTransferHost` object.
 
