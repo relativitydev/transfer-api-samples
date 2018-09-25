@@ -15,6 +15,12 @@ namespace Relativity.Transfer.Sample
 
     public class Program
     {
+        // TODO: Update these parameters.
+        private const string RelativityUrl = "https://relativity_host.com/Relativity";
+        private const string RelativityUserName = "jsmith@example.com";
+        private const string RelativityPassword = "UnbreakableP@ssword777";
+        private const int WorkspaceId = 1027428;
+
         public static void Main(string[] args)
         {
             Console2.Initialize();
@@ -49,6 +55,11 @@ namespace Relativity.Transfer.Sample
                     Console2.WriteLine(ConsoleColor.Red, "A non-fatal transfer failure has occurred. Error: " + e);
                 }
             }
+            catch (ApplicationException e)
+            {
+                // No need to include the stacktrace.
+                Console2.WriteLine(ConsoleColor.Red, e.Message);
+            }
             catch (Exception e)
             {
                 Console2.WriteLine(ConsoleColor.Red, "An unexpected error has occurred. Error: " + e);
@@ -69,26 +80,34 @@ namespace Relativity.Transfer.Sample
             {
                 // Use the workspace default file share to setup the target path.
                 string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
+
+                // Manually constructing the transfer path to demonstrate basic properties.
+                string sourceFile = Path.Combine(Path.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG");
                 TransferPath localSourcePath = new TransferPath
                 {
+                    // If the following 2 aren't specified, they're inherited from TransferRequest.
+                    Direction = TransferDirection.Upload,
+                    TargetPath = uploadTargetPath,
+
                     PathAttributes = TransferPathAttributes.File,
-                    SourcePath = Path.Combine(Path.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG"),
-                    TargetPath = uploadTargetPath
+                    Bytes = new System.IO.FileInfo(sourceFile).Length,
+                    SourcePath = sourceFile,
+                    Tag = new { Name = "Hello", Value = "World" }
                 };
+
+                // This decouples all transfer events into a separate object.
+                TransferContext context = CreateTransferContext();
 
                 // Create a transfer request and upload a single local file to the remote target path.
                 Console2.WriteStartHeader("Basic Transfer - Upload");
-                TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, uploadTargetPath);
-                uploadRequest.Application = "Github Sample";
-                uploadRequest.Name = "Basic Upload Sample";
+                TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
                 Console2.WriteLine("Basic upload transfer started.");
                 ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
                 Console2.WriteLine("Basic upload transfer completed.");
                 DisplayTransferResult(uploadResult);
                 Console2.WriteEndHeader();
 
-                // Create a transfer request to download a single remote file to the local target path.
-                Console2.WriteStartHeader("Basic Transfer - Download");
+                // Use the local directory to setup the target path.
                 string downloadTargetPath = directory.Path;
                 TransferPath remotePath = new TransferPath
                 {
@@ -97,9 +116,9 @@ namespace Relativity.Transfer.Sample
                     TargetPath = downloadTargetPath
                 };
 
-                TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, downloadTargetPath);
-                downloadRequest.Application = "Github Sample";
-                downloadRequest.Name = "Basic Download Sample";
+                // Create a transfer request to download a single remote file to the local target path.
+                Console2.WriteStartHeader("Basic Transfer - Download");
+                TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, context);
                 Console2.WriteLine("Basic download transfer started.");
                 ITransferResult downloadResult = await client.TransferAsync(downloadRequest, token).ConfigureAwait(false);
                 Console2.WriteLine("Basic download transfer completed.");
@@ -180,11 +199,12 @@ namespace Relativity.Transfer.Sample
         {
             Console2.WriteStartHeader("Initialize GlobalSettings");
 
-            // Configure settings for a console-based application.
-            GlobalSettings.Instance.ApmFireAndForgetEnabled = false;
+            // A meaningful application name is encoded within monitoring data.
             GlobalSettings.Instance.ApplicationName = "sample-app";
+
+            // Configure for a console-based application.
             GlobalSettings.Instance.CommandLineModeEnabled = true;
-            Console2.WriteLine("Configured APM and console settings.");
+            Console2.WriteLine("Configured console settings.");
 
             // This will automatically write real-time entries into the transfer log.
             GlobalSettings.Instance.StatisticsLogEnabled = true;
@@ -193,7 +213,6 @@ namespace Relativity.Transfer.Sample
 
             // Limit the max target rate and throw exceptions when invalid paths are specified.
             GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 10;
-            GlobalSettings.Instance.ValidateResolvedPaths = true;
             Console2.WriteLine("Configured miscellaneous settings.");
             Console2.WriteEndHeader();
         }
@@ -203,7 +222,6 @@ namespace Relativity.Transfer.Sample
             // The configuration object provides numerous options to customize the transfer.
             return new ClientConfiguration
             {
-                BadPathErrorsRetry = false,
                 FileNotFoundErrorsRetry = false,
                 MaxHttpRetryAttempts = 2,
                 PreserveDates = true,
@@ -234,6 +252,7 @@ namespace Relativity.Transfer.Sample
 
         private static ITransferLog CreateTransferLog()
         {
+            // This is a standard set of options for any logger.
             Logging.LoggerOptions loggerOptions = new Logging.LoggerOptions
             {
                 Application = "F456D022-5F91-42A5-B00F-5609AED8C9EF",
@@ -250,15 +269,16 @@ namespace Relativity.Transfer.Sample
 
         private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog log)
         {
-            // TODO: Update with the Relativity instance, credentials, and optional workspace.
-            Uri url = new Uri("https://regression-b.r1.kcura.com");
-            IHttpCredential credential = new BasicAuthenticationCredential("scott.parillo@relativity.com", "P@ssw0rd@1");
-            const int WorkspaceId = 1580156;
-            if (string.Compare(url.Host, "relativity_host.com", StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Compare(RelativityUrl, "https://relativity_host.com/Relativity", StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare(RelativityUserName, "jsmith@example.com", StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare(RelativityPassword, "UnbreakableP@ssword777", StringComparison.OrdinalIgnoreCase) == 0 ||
+                WorkspaceId == 1)
             {
-                throw new InvalidOperationException("This operation cannot be performed because the Relativity parameters have not been assigned.");
+                throw new ApplicationException("You must update all Relativity connection parameters in order to run this application.");
             }
-
+        
+            Uri url = new Uri(RelativityUrl);
+            IHttpCredential credential = new BasicAuthenticationCredential(RelativityUserName, RelativityPassword);
             RelativityConnectionInfo connectionInfo = new RelativityConnectionInfo(url, credential, WorkspaceId);
             return new RelativityTransferHost(connectionInfo, log);
         }
@@ -300,6 +320,46 @@ namespace Relativity.Transfer.Sample
             return fileShare;
         }
 
+        private static TransferContext CreateTransferContext()
+        {
+            // The context object is used to decouple operations such as progress from other TAPI objects.
+            TransferContext context = new TransferContext { StatisticsRateSeconds = 0.5, StatisticsEnabled = true };
+            context.TransferPathIssue += (sender, args) =>
+                {
+                    Console2.WriteLine("Event=TransferPathIssue, Attributes={0}", args.Issue.Attributes);
+                };
+
+            context.TransferRequest += (sender, args) =>
+                {
+                    Console2.WriteLine("Event=TransferRequest, Status={0}", args.Status);
+                };
+
+            context.TransferPathProgress += (sender, args) =>
+                {
+                    Console2.WriteLine(
+                        "Event=TransferPathProgress, Filename={0}, Status={1}",
+                        Path.GetFileName(args.Path.SourcePath),
+                        args.Status);
+                };
+
+            context.TransferJobRetry += (sender, args) =>
+                {
+                    Console2.WriteLine("Event=TransferJobRetry, Retry={0}", args.Count);
+                };
+
+            context.TransferStatistics += (sender, args) =>
+                {
+                    // Progress has already factored in file-level vs byte-level progress.
+                    Console2.WriteLine(
+                        "EWvent=TransferStatistics, Progress: {0:00.00}%, Transfer rate: {1:00.00} Mbps, Remaining: {2:hh\\:mm\\:ss}",
+                        args.Statistics.Progress,
+                        args.Statistics.TransferRateMbps,
+                        args.Statistics.RemainingTime);
+                };
+
+            return context;
+        }
+
         private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTransferHost host, int number, CancellationToken token)
         {
             Console2.WriteStartHeader("Get Specified File Share");
@@ -336,43 +396,6 @@ namespace Relativity.Transfer.Sample
             Console2.WriteLine("Total bytes: {0:n0}", result.TotalByteCount);
             Console2.WriteEndHeader();
             return result.Paths.ToList();
-        }
-
-        private static TransferContext CreateTransferContext()
-        {
-            // The context object is used to decouple operations such as progress from other TAPI objects.
-            TransferContext context = new TransferContext { StatisticsRateSeconds = 2.0 };
-            context.TransferPathIssue += (sender, args) =>
-            {
-                Console2.WriteLine("Event=TransferPathIssue, Attributes={0}", args.Issue.Attributes);
-            };
-
-            context.TransferRequest += (sender, args) =>
-            {
-                Console2.WriteLine("Event=TransferRequest, Status={0}", args.Status);
-            };
-
-            context.TransferPathProgress += (sender, args) =>
-            {
-                Console2.WriteLine("Event=TransferPathProgress, Filename={0}, Status={1}", Path.GetFileName(args.Path.SourcePath), args.Status);
-            };
-
-            context.TransferJobRetry += (sender, args) =>
-            {
-                Console2.WriteLine("Event=TransferJobRetry, Retry={0}", args.Count);
-            };
-
-            context.TransferStatistics += (sender, args) =>
-            {
-                // Progress has already factored in file-level vs byte-level progress.
-                Console2.WriteLine(
-                    "EWvent=TransferStatistics, Progress: {0:00.00}%, Transfer rate: {1:00.00} Mbps, Remaining: {2:hh\\:mm\\:ss}",
-                    args.Statistics.Progress,
-                    args.Statistics.TransferRateMbps,
-                    args.Statistics.RemainingTime);
-            };
-
-            return context;
         }
 
         private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToken token)
