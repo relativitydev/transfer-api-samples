@@ -679,7 +679,7 @@ private static async Task<ITransferClient> CreateClientAsync(IRelativityTransfer
 
     Console2.WriteLine("TAPI created the {0} transfer client.", client.DisplayName);
     Console2.WriteEndHeader();
-    return host.CreateClient(configuration);
+    return client;
 }
 ```
 </details>
