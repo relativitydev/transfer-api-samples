@@ -71,7 +71,7 @@ Prerequisites for running the solution:
 The next sections incrementally builds the solution to demonstrate both basic and advanced TAPI features.
 
 * [Project skeleton](#project-skeleton)
-* [General concepts and configuration](#general-concepts-and-configuration)
+* [Object model](#object-model)
 * [Basic demo](#basic-demo)
 * [Advanced demo](#advanced-demo)
 
@@ -85,7 +85,6 @@ This section creates the C# console application used to support the basic and ad
 * [Copy files and add to project](#copy-files-and-add-to-project)
 * [Update file properties](#update-file-properties)
 * [Update App.config](#update-appconfig)
-* [Replace Program class](#replace-program-class)
 
 #### Clone GIT repository
 The sample includes a few helper classes and a small dataset and will get copied into a new project. Open a command prompt and execute the following command:
@@ -218,229 +217,18 @@ Copy and paste the source below into the `App.config` file.
 
 </details>
 
-#### Replace Program class
-The `Program.cs` class provides a skeleton to setup TAPI and perform simple and advanced transfers.
-
-Copy and paste the source below to replace the existing `Program.cs` class.
-
-<details><summary>View source code</summary>
-
-```csharp
-namespace Relativity.Transfer.Sample
-{
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-
-    public class Program
-    {
-        // TODO: Update these parameters.
-        private const string RelativityUrl = "https://relativity_host.com/Relativity";
-        private const string RelativityUserName = "jsmith@example.com";
-        private const string RelativityPassword = "UnbreakableP@ssword777";
-        private const int WorkspaceId = 1;
-
-        public static void Main(string[] args)
-        {
-            Console2.Initialize();
-            Console2.WriteLine("Relativity Transfer Sample");
-            int exitCode = 1;
-
-            try
-            {
-                InitializeGlobalSettings();
-                Task.Run(
-                    async () =>
-                        {
-                            using (ITransferLog transferLog = CreateTransferLog())
-                            using (IRelativityTransferHost host = CreateRelativityTransferHost(transferLog))
-                            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
-                            {
-                                CancellationToken token = cancellationTokenSource.Token;
-                                await DemoBasicTransferAsync(host, token).ConfigureAwait(false);
-                                await DemoAdvancedTransferAsync(host, token).ConfigureAwait(false);
-                                exitCode = 0;
-                            }
-                        }).GetAwaiter().GetResult();
-            }
-            catch (TransferException e)
-            {
-                if (e.Fatal)
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "A fatal transfer failure has occurred. Error: " + e);
-                }
-                else
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "A non-fatal transfer failure has occurred. Error: " + e);
-                }
-            }
-            catch (ApplicationException e)
-            {
-                // No need to include the stacktrace.
-                Console2.WriteLine(ConsoleColor.Red, e.Message);
-            }
-            catch (Exception e)
-            {
-                Console2.WriteLine(ConsoleColor.Red, "An unexpected error has occurred. Error: " + e);
-            }
-            finally
-            {
-                Console2.WriteTerminateLine(exitCode);
-                Environment.Exit(exitCode);
-            }
-        }
-
-        private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            await Task.CompletedTask.ConfigureAwait(false);
-        }
-
-        private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            await Task.CompletedTask.ConfigureAwait(false);
-        }
-
-        private static void InitializeGlobalSettings()
-        {
-        }
-
-        private static ClientConfiguration CreateClientConfiguration()
-        {
-            return null;
-        }
-
-        private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
-        {
-            return null;
-        }
-
-        private static ITransferLog CreateTransferLog()
-        {
-            return null;
-        }
-
-        private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog log)
-        {
-            return null;
-        }
-
-        private static async Task<ITransferClient> CreateClientAsync(IRelativityTransferHost host, ClientConfiguration configuration, CancellationToken token)
-        {
-            await Task.Delay(1);
-            return null;
-        }
-
-        private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            await Task.Delay(1);
-            return null;
-        }
-
-        private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTransferHost host, int number, CancellationToken token)
-        {
-            await Task.Delay(1);
-            return null;
-        }
-
-        private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath, CancellationToken token)
-        {
-            await Task.Delay(1);
-            return null;
-        }
-
-        private static TransferContext CreateTransferContext()
-        {
-            return null;
-        }
-
-        private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToken token)
-        {
-            await Task.Delay(1);
-        }
-
-        private static void DisplayFileShare(RelativityFileShare fileShare)
-        {
-            Console2.WriteLine("Artifact ID: {0}", fileShare.ArtifactId);
-            Console2.WriteLine("Name: {0}", fileShare.Name);
-            Console2.WriteLine("UNC Path: {0}", fileShare.Url);
-            Console2.WriteLine("Cloud Instance: {0}", fileShare.CloudInstance);
-
-            // RelativityOne specific properties.
-            Console2.WriteLine("Number: {0}", fileShare.Number);
-            Console2.WriteLine("Tenant ID: {0}", fileShare.TenantId);
-        }
-
-        private static void DisplayTransferResult(ITransferResult result)
-        {
-            // The original request can be accessed within the transfer result.
-            Console2.WriteLine();
-            Console2.WriteLine("Transfer Summary");
-            Console2.WriteLine("Name: {0}", result.Request.Name);
-            Console2.WriteLine("Direction: {0}", result.Request.Direction);
-            if (result.Status == TransferStatus.Successful || result.Status == TransferStatus.Canceled)
-            {
-                Console2.WriteLine("Result: {0}", result.Status);
-            }
-            else
-            {
-                Console2.WriteLine(ConsoleColor.Red, "Result: {0}", result.Status);
-                if (result.TransferError != null)
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "Error: {0}", result.TransferError.Message);
-                }
-                else
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "Error: Check the error log for more details.");
-                }
-            }
-
-            // Display useful transfer metrics.
-            Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", result.Elapsed);
-            Console2.WriteLine("Total files: Files: {0:n0}", result.TotalTransferredFiles);
-            Console2.WriteLine("Total bytes: Files: {0:n0}", result.TotalTransferredBytes);
-            Console2.WriteLine("Total files not found: {0:n0}", result.TotalFilesNotFound);
-            Console2.WriteLine("Total bad path errors: {0:n0}", result.TotalBadPathErrors);
-            Console2.WriteLine("Data rate: {0:#.##} Mbps", result.TransferRateMbps);
-            Console2.WriteLine("Retry count: {0}", result.RetryCount);
-        }
-
-        private static string GetUniqueRemoteTargetPath(RelativityFileShare fileShare)
-        {
-            // Note: replace this with an easier to recognize folder name.
-            string uniqueFolder = Guid.NewGuid().ToString();
-            string path = string.Join("\\", fileShare.Url.TrimEnd('\\'), "_Relativity-Transfer-Sample", uniqueFolder);
-            return path;
-        }
-    }
-}
-```
-</details>
-
----
-
-Ensure the following fields found at the top of the class are updated:
-
-* The Relativity instance URL
-* The Relativity username and password
-* The workspace artifact identifier
-
----
-
-Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
-
-### General concepts and configuration
-The next several sections incrementally configure and construct all required objects.
+### Object model
+The next several sections highlight the TAPI object model and incrementally configure and construct all required objects.
 
 * [Object model overview](#object-model-overview)
+* [Replace Program class](#replace-program-class)
 * [Cancellation](#cancellation)
 * [Initialize GlobalSettings](#initialize-globalsettings)
 * [Create ClientConfiguration Object](#create-clientconfiguration-object)
 * [Create ITransferLog Object](#create-itransferlog-object)
 * [Create IRelativityTransferHost Object](#create-irelativitytransferhost-object)
 * [Create ITransferClient Object](#create-itransferclient-object)
+* [Subscribe to transfer events](#subscribe-to-transfer-events)
 
 #### Object model overview
 The source code that follows provides an overview of the TAPI object model in 1 continuous block. This will provide insight into the structure and flow of typical upload and download transfer requests:
@@ -525,6 +313,219 @@ catch (TransferException e)
 ```
 
 </details>
+
+#### Replace Program class
+The `Program.cs` class provides a skeleton to setup TAPI and perform simple and advanced transfers.
+
+Copy and paste the source below to replace the existing `Program.cs` class.
+
+<details><summary>View source code</summary>
+
+```csharp
+namespace Relativity.Transfer.Sample
+{
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
+
+    public class Program
+    {
+        // TODO: Update these parameters.
+        private const string RelativityUrl = "https://relativity_host.com/Relativity";
+        private const string RelativityUserName = "jsmith@example.com";
+        private const string RelativityPassword = "UnbreakableP@ssword777";
+        private const int WorkspaceId = 1;
+
+        public static void Main(string[] args)
+        {
+            Console2.Initialize();
+            Console2.WriteLine("Relativity Transfer Sample");
+            int exitCode = 1;
+
+            try
+            {
+                InitializeGlobalSettings();
+                Task.Run(
+                    async () =>
+                        {
+                            using (ITransferLog transferLog = CreateTransferLog())
+                            using (IRelativityTransferHost host = CreateRelativityTransferHost(transferLog))
+                            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
+                            {
+                                CancellationToken token = cancellationTokenSource.Token;
+                                await DemoBasicTransferAsync(host, token).ConfigureAwait(false);
+                                await DemoAdvancedTransferAsync(host, token).ConfigureAwait(false);
+                                exitCode = 0;
+                            }
+                        }).GetAwaiter().GetResult();
+            }
+            catch (TransferException e)
+            {
+                if (e.Fatal)
+                {
+                    Console2.WriteLine(ConsoleColor.Red, "A fatal transfer failure has occurred. Error: " + e);
+                }
+                else
+                {
+                    Console2.WriteLine(ConsoleColor.Red, "A non-fatal transfer failure has occurred. Error: " + e);
+                }
+            }
+            catch (ApplicationException e)
+            {
+                // No need to include the stacktrace.
+                Console2.WriteLine(ConsoleColor.Red, e.Message);
+            }
+            catch (Exception e)
+            {
+                Console2.WriteLine(ConsoleColor.Red, "An unexpected error has occurred. Error: " + e);
+            }
+            finally
+            {
+                Console2.WriteTerminateLine(exitCode);
+                Environment.Exit(exitCode);
+            }
+        }
+
+        private static void InitializeGlobalSettings()
+        {
+        }
+
+        private static ClientConfiguration CreateClientConfiguration()
+        {
+            return null;
+        }
+
+        private static ITransferLog CreateTransferLog()
+        {
+            return null;
+        }
+
+        private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog log)
+        {
+            return null;
+        }
+
+        private static async Task<ITransferClient> CreateClientAsync(IRelativityTransferHost host, ClientConfiguration configuration, CancellationToken token)
+        {
+            await Task.Delay(1);
+            return null;
+        }
+
+        private static TransferContext CreateTransferContext()
+        {
+            return null;
+        }
+
+        private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
+        {
+            await Task.Delay(1);
+            return null;
+        }
+
+        private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, CancellationToken token)
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+        }
+
+        private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
+        {
+            return null;
+        }
+
+        private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTransferHost host, int number, CancellationToken token)
+        {
+            await Task.Delay(1);
+            return null;
+        }
+
+        private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath, CancellationToken token)
+        {
+            await Task.Delay(1);
+            return null;
+        }
+
+        private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+        }
+
+        private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToken token)
+        {
+            await Task.Delay(1);
+        }
+
+        private static void DisplayFileShare(RelativityFileShare fileShare)
+        {
+            Console2.WriteLine("Artifact ID: {0}", fileShare.ArtifactId);
+            Console2.WriteLine("Name: {0}", fileShare.Name);
+            Console2.WriteLine("UNC Path: {0}", fileShare.Url);
+            Console2.WriteLine("Cloud Instance: {0}", fileShare.CloudInstance);
+
+            // RelativityOne specific properties.
+            Console2.WriteLine("Number: {0}", fileShare.Number);
+            Console2.WriteLine("Tenant ID: {0}", fileShare.TenantId);
+        }
+
+        private static void DisplayTransferResult(ITransferResult result)
+        {
+            // The original request can be accessed within the transfer result.
+            Console2.WriteLine();
+            Console2.WriteLine("Transfer Summary");
+            Console2.WriteLine("Name: {0}", result.Request.Name);
+            Console2.WriteLine("Direction: {0}", result.Request.Direction);
+            if (result.Status == TransferStatus.Successful || result.Status == TransferStatus.Canceled)
+            {
+                Console2.WriteLine("Result: {0}", result.Status);
+            }
+            else
+            {
+                Console2.WriteLine(ConsoleColor.Red, "Result: {0}", result.Status);
+                if (result.TransferError != null)
+                {
+                    Console2.WriteLine(ConsoleColor.Red, "Error: {0}", result.TransferError.Message);
+                }
+                else
+                {
+                    Console2.WriteLine(ConsoleColor.Red, "Error: Check the error log for more details.");
+                }
+            }
+
+            // Display useful transfer metrics.
+            Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", result.Elapsed);
+            Console2.WriteLine("Total files: Files: {0:n0}", result.TotalTransferredFiles);
+            Console2.WriteLine("Total bytes: Files: {0:n0}", result.TotalTransferredBytes);
+            Console2.WriteLine("Total files not found: {0:n0}", result.TotalFilesNotFound);
+            Console2.WriteLine("Total bad path errors: {0:n0}", result.TotalBadPathErrors);
+            Console2.WriteLine("Data rate: {0:#.##} Mbps", result.TransferRateMbps);
+            Console2.WriteLine("Retry count: {0}", result.RetryCount);
+        }
+
+        private static string GetUniqueRemoteTargetPath(RelativityFileShare fileShare)
+        {
+            string uniqueFolder = Guid.NewGuid().ToString();
+            string path = string.Join("\\", fileShare.Url.TrimEnd('\\'), "_Relativity-Transfer-Sample", uniqueFolder);
+            return path;
+        }
+    }
+}
+```
+</details>
+
+---
+
+Ensure the following 4 fields found at the top of the class are updated with valid parameters:
+
+* RelativityUrl
+* RelativityUserName
+* RelativityPassword
+* WorkspaceId
+
+---
+
+Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
 
 #### Cancellation
 The use of cancellation token is strongly recommended with potentially long-running transfer operations. The sample wraps a `CancellationTokenSource` object within a using block, assigns the `CancellationToken` object to a variable, and passes the variable to all asynchronous methods.
@@ -683,6 +684,56 @@ private static async Task<ITransferClient> CreateClientAsync(IRelativityTransfer
 ```
 </details>
 
+#### Subscribe to transfer events
+Since transfer events are used for both upload and download operations, the demo wraps this within the `CreateTransferContext()` method to construct the [TransferContext](#transfer-events-and-statistics) object and write event details to the console. This object is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.
+
+Find the `CreateTransferContext()` empty method in the `Program` class and replace with the following:
+
+<details><summary>View source code</summary>
+
+```csharp
+private static TransferContext CreateTransferContext()
+{
+    // The context object is used to decouple operations such as progress from other TAPI objects.
+    TransferContext context = new TransferContext { StatisticsRateSeconds = 0.5, StatisticsEnabled = true };
+    context.TransferPathIssue += (sender, args) =>
+        {
+            Console2.WriteLine("Event=TransferPathIssue, Attributes={0}", args.Issue.Attributes);
+        };
+
+    context.TransferRequest += (sender, args) =>
+        {
+            Console2.WriteLine("Event=TransferRequest, Status={0}", args.Status);
+        };
+
+    context.TransferPathProgress += (sender, args) =>
+        {
+            Console2.WriteLine(
+                "Event=TransferPathProgress, Filename={0}, Status={1}",
+                Path.GetFileName(args.Path.SourcePath),
+                args.Status);
+        };
+
+    context.TransferJobRetry += (sender, args) =>
+        {
+            Console2.WriteLine("Event=TransferJobRetry, Retry={0}", args.Count);
+        };
+
+    context.TransferStatistics += (sender, args) =>
+        {
+            // Progress has already factored in file-level vs byte-level progress.
+            Console2.WriteLine(
+                "EWvent=TransferStatistics, Progress: {0:00.00}%, Transfer rate: {1:00.00} Mbps, Remaining: {2:hh\\:mm\\:ss}",
+                args.Statistics.Progress,
+                args.Statistics.TransferRateMbps,
+                args.Statistics.RemainingTime);
+        };
+
+    return context;
+}
+```
+</details>
+
 Verify the solution builds successfully. Next, Start or debug the project and ensure a transfer client object is constructed and the application terminates with a zero exit code.
 
 ### Basic demo
@@ -691,11 +742,32 @@ At this point, all helper methods have been defined, the transfer objects have b
 For this demo, the approach is as follows:
 
 * Get the workspace file share object
-* Subscribe to transfer events
 * Create an upload transfer request for 1 test file
 * Submit the transfer request, await completion, and display the results
 * Create a download transfer request for the 1 test file that was just uploaded
 * Submit the transfer request, await completion, and display the results
+
+#### Get workspace file share object
+When a Relativity workspace is created, the user must specify a resource pool in order to assign a default file share resource server. Not only is this a convenient way to access file share details but *the user is not required to be an admin to directly access the file share resource server objects.*
+
+To simplify acquiring workspace and file share details, the `IRelativityTransferHost` and `ITransferClient` objects both support a `GetWorkspaceAsync` method to retrieve a `Workspace` object. Given the `Workspace` object, the `DefaultFileShare` property can be used to access the UNC path.
+
+Find the `GetWorkspaceDefaultFileShareAsync` empty method in the `Program` class and replace with the following:
+
+<details><summary>View source code</summary>
+
+```csharp
+private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
+{
+    Console2.WriteStartHeader("Get Workspace File Share");
+    Workspace workspace = await host.GetWorkspaceAsync(token).ConfigureAwait(false);
+    RelativityFileShare fileShare = workspace.DefaultFileShare;
+    DisplayFileShare(fileShare);
+    Console2.WriteEndHeader();
+    return fileShare;
+}
+```
+</details>
 
 #### Replace DemoBasicTransferAsync method
 Find the `DemoBasicTransferAsync` empty method in the `Program` class and replace with the following:
@@ -761,96 +833,35 @@ private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, C
 ```
 </details>
 
-#### Get workspace file share object
-When a Relativity workspace is created, the user must specify a resource pool in order to assign a default file share resource server. Not only is this a convenient way to access file share details but *the user is not required to be an admin to directly access the file share resource server objects.*
-
-To simplify acquiring workspace and file share details, the `IRelativityTransferHost` and `ITransferClient` objects both support a `GetWorkspaceAsync` method to retrieve a `Workspace` object. Given the `Workspace` object, the `DefaultFileShare` property can be used to access the UNC path.
-
-Find the `GetWorkspaceDefaultFileShareAsync` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
-{
-    Console2.WriteStartHeader("Get Workspace File Share");
-    Workspace workspace = await host.GetWorkspaceAsync(token).ConfigureAwait(false);
-    RelativityFileShare fileShare = workspace.DefaultFileShare;
-    DisplayFileShare(fileShare);
-    Console2.WriteEndHeader();
-    return fileShare;
-}
-```
-</details>
-
-#### Subscribe to transfer events
-Since transfer events are used for both upload and download operations, the demo wraps this within the `CreateTransferContext()` method to construct the [TransferContext](#transfer-events-and-statistics) object and write event details to the console. This object is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.
-
-Find the `CreateTransferContext()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static TransferContext CreateTransferContext()
-{
-    // The context object is used to decouple operations such as progress from other TAPI objects.
-    TransferContext context = new TransferContext { StatisticsRateSeconds = 0.5, StatisticsEnabled = true };
-    context.TransferPathIssue += (sender, args) =>
-        {
-            Console2.WriteLine("Event=TransferPathIssue, Attributes={0}", args.Issue.Attributes);
-        };
-
-    context.TransferRequest += (sender, args) =>
-        {
-            Console2.WriteLine("Event=TransferRequest, Status={0}", args.Status);
-        };
-
-    context.TransferPathProgress += (sender, args) =>
-        {
-            Console2.WriteLine(
-                "Event=TransferPathProgress, Filename={0}, Status={1}",
-                Path.GetFileName(args.Path.SourcePath),
-                args.Status);
-        };
-
-    context.TransferJobRetry += (sender, args) =>
-        {
-            Console2.WriteLine("Event=TransferJobRetry, Retry={0}", args.Count);
-        };
-
-    context.TransferStatistics += (sender, args) =>
-        {
-            // Progress has already factored in file-level vs byte-level progress.
-            Console2.WriteLine(
-                "EWvent=TransferStatistics, Progress: {0:00.00}%, Transfer rate: {1:00.00} Mbps, Remaining: {2:hh\\:mm\\:ss}",
-                args.Statistics.Progress,
-                args.Statistics.TransferRateMbps,
-                args.Statistics.RemainingTime);
-        };
-
-    return context;
-}
-```
-</details>
-
 #### Create upload TransferRequest object
 Given the workspace default file share, the upload target path is defined and the `TransferRequest` object is constructed using the `ForUpload` overload:
 
 ```csharp
 // Use the workspace default file share to setup the target path.
 string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
+
+// Manually constructing the transfer path to demonstrate basic properties.
+string sourceFile = Path.Combine(Path.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG");
 TransferPath localSourcePath = new TransferPath
 {
+    // If the following 2 aren't specified, they're inherited from TransferRequest.
+    Direction = TransferDirection.Upload,
+    TargetPath = uploadTargetPath,
+
     PathAttributes = TransferPathAttributes.File,
-    SourcePath = Path.Combine(Path.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG"),
-    TargetPath = uploadTargetPath
+    Bytes = new System.IO.FileInfo(sourceFile).Length,
+    SourcePath = sourceFile,
+    Tag = new { Name = "Hello", Value = "World" }
 };
+
+// This decouples all transfer events into a separate object.
+TransferContext context = CreateTransferContext();
 
 // Create a transfer request and upload a single local file to the remote target path.
 Console2.WriteStartHeader("Basic Transfer - Upload");
-TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath);
+TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
 ```
--
+
 #### Create download TransferRequest object
 Fundamentally, the download request is just the inverse of the upload request. The remote path is now the source path and the local path is now the target path. The `TransferRequest` object is constructed using the `ForDownload` overload:
 
@@ -866,7 +877,7 @@ TransferPath remotePath = new TransferPath
 
 // Create a transfer request to download a single remote file to the local target path.
 Console2.WriteStartHeader("Basic Transfer - Download");
-TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath);
+TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, context);
 ```
 
 #### Execute TransferAsync method
@@ -908,82 +919,6 @@ For this demo, the same approach is taken as the `Basic demo` but with a few twi
 * Create a download transfer job request and job
 * Add the remote transfer paths to the job
 * Change the data rate, await completion, and display the results
-
-#### Replace DemoAdvancedTransferAsync method
-Find the `DemoAdvancedTransferAsync()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
-{
-    // Search for the first logical file share.
-    const int LogicalFileShareNumber = 1;
-    RelativityFileShare fileShare = await GetFileShareAsync(host, LogicalFileShareNumber, token).ConfigureAwait(false);
-
-    // Configure an Aspera specific transfer.
-    Relativity.Transfer.Aspera.AsperaClientConfiguration configuration = CreateAsperaClientConfiguration();
-
-    // Assigning the file share bypasses auto-configuration that will normally use the default workspace repository.
-    configuration.TargetFileShare = fileShare;
-    using (ITransferClient client = await CreateClientAsync(host, configuration, token).ConfigureAwait(false))
-    using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
-    {
-        // Create a job-based upload transfer request.
-        Console2.WriteStartHeader("Advanced Transfer - Upload");
-        string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
-        IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(client, uploadTargetPath, token).ConfigureAwait(false);
-        TransferContext context = CreateTransferContext();
-        TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
-        uploadJobRequest.Application = "Github Sample";
-        uploadJobRequest.Name = "Advanced Upload Sample";
-
-        // Create a transfer job to upload the local sample dataset to the target remote path.
-        using (ITransferJob job = await client.CreateJobAsync(uploadJobRequest, token).ConfigureAwait(false))
-        {
-            Console2.WriteLine("Advanced upload started.");
-
-            // Paths added to the async job are transferred immediately.
-            await job.AddPathsAsync(localSourcePaths, token).ConfigureAwait(false);
-
-            // Await completion of the job.
-            ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-            Console2.WriteLine("Advanced upload completed.");
-            DisplayTransferResult(result);
-            Console2.WriteEndHeader();
-        }
-                
-        // Create a job-based download transfer request.
-        Console2.WriteStartHeader("Advanced Transfer - Download");
-        string downloadTargetPath = directory.Path;
-        TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
-        downloadJobRequest.Application = "Github Sample";
-        downloadJobRequest.Name = "Advanced Download Sample";
-        Console2.WriteLine("Advanced download started.");
-
-        // Create a transfer job to download the sample dataset to the target local path.
-        using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token).ConfigureAwait(false))
-        {
-            IEnumerable<TransferPath> remotePaths = localSourcePaths.Select(localPath => new TransferPath
-            {
-                SourcePath = uploadTargetPath + "\\" + Path.GetFileName(localPath.SourcePath),
-                PathAttributes = TransferPathAttributes.File,
-                TargetPath = downloadTargetPath
-            });
-                    
-            await job.AddPathsAsync(remotePaths, token).ConfigureAwait(false);
-            await ChangeDataRateAsync(job, token).ConfigureAwait(false);
-
-            // Await completion of the job.
-            ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-            Console2.WriteLine("Advanced download completed.");
-            DisplayTransferResult(result);
-            Console2.WriteEndHeader();
-        }
-    }
-}
-```
-</details>
 
 #### Create AsperaClientConfiguration object
 The `CreateAsperaClientConfiguration()` method is responsible for creating and configuring the [AsperaClientConfiguration](#asperaclientconfiguration) object. This object inherits all of the configurable properties found within [ClientConfiguration](#clientconfiguration), adds numerous Aspera specific transfer properties, and assigns `Aspera` to the the `Client` property. This value is later evaluated by the `CreateClientAsync()` method to construct the specified TAPI client.
@@ -1086,6 +1021,82 @@ private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITran
     Console2.WriteLine("Total bytes: {0:n0}", result.TotalByteCount);
     Console2.WriteEndHeader();
     return result.Paths.ToList();
+}
+```
+</details>
+
+#### Replace DemoAdvancedTransferAsync method
+Find the `DemoAdvancedTransferAsync()` empty method in the `Program` class and replace with the following:
+
+<details><summary>View source code</summary>
+
+```csharp
+private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
+{
+    // Search for the first logical file share.
+    const int LogicalFileShareNumber = 1;
+    RelativityFileShare fileShare = await GetFileShareAsync(host, LogicalFileShareNumber, token).ConfigureAwait(false);
+
+    // Configure an Aspera specific transfer.
+    Relativity.Transfer.Aspera.AsperaClientConfiguration configuration = CreateAsperaClientConfiguration();
+
+    // Assigning the file share bypasses auto-configuration that will normally use the default workspace repository.
+    configuration.TargetFileShare = fileShare;
+    using (ITransferClient client = await CreateClientAsync(host, configuration, token).ConfigureAwait(false))
+    using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
+    {
+        // Create a job-based upload transfer request.
+        Console2.WriteStartHeader("Advanced Transfer - Upload");
+        string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
+        IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(client, uploadTargetPath, token).ConfigureAwait(false);
+        TransferContext context = CreateTransferContext();
+        TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
+        uploadJobRequest.Application = "Github Sample";
+        uploadJobRequest.Name = "Advanced Upload Sample";
+
+        // Create a transfer job to upload the local sample dataset to the target remote path.
+        using (ITransferJob job = await client.CreateJobAsync(uploadJobRequest, token).ConfigureAwait(false))
+        {
+            Console2.WriteLine("Advanced upload started.");
+
+            // Paths added to the async job are transferred immediately.
+            await job.AddPathsAsync(localSourcePaths, token).ConfigureAwait(false);
+
+            // Await completion of the job.
+            ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
+            Console2.WriteLine("Advanced upload completed.");
+            DisplayTransferResult(result);
+            Console2.WriteEndHeader();
+        }
+                
+        // Create a job-based download transfer request.
+        Console2.WriteStartHeader("Advanced Transfer - Download");
+        string downloadTargetPath = directory.Path;
+        TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
+        downloadJobRequest.Application = "Github Sample";
+        downloadJobRequest.Name = "Advanced Download Sample";
+        Console2.WriteLine("Advanced download started.");
+
+        // Create a transfer job to download the sample dataset to the target local path.
+        using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token).ConfigureAwait(false))
+        {
+            IEnumerable<TransferPath> remotePaths = localSourcePaths.Select(localPath => new TransferPath
+            {
+                SourcePath = uploadTargetPath + "\\" + Path.GetFileName(localPath.SourcePath),
+                PathAttributes = TransferPathAttributes.File,
+                TargetPath = downloadTargetPath
+            });
+                    
+            await job.AddPathsAsync(remotePaths, token).ConfigureAwait(false);
+            await ChangeDataRateAsync(job, token).ConfigureAwait(false);
+
+            // Await completion of the job.
+            ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
+            Console2.WriteLine("Advanced download completed.");
+            DisplayTransferResult(result);
+            Console2.WriteEndHeader();
+        }
+    }
 }
 ```
 </details>
