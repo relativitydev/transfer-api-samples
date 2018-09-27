@@ -1685,16 +1685,16 @@ using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo)
 ```
 
 #### Search options
-The search criteria is exposed through the `FileStorageSearchContext` object. **Admin rights are required for all non-workspace search criteria** and includes the following search options:
+The search criteria is exposed through the `FileStorageSearchContext` object. **Full system admin rights are required for all non-workspace search criteria** and includes the following search options:
 
 | Property                           | Description                                                                                                                                                                                                      |
 | ---------------------------------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ResourcePoolCondition              | The search is filtered by a resource pool condition.                                                                                       |
+| ResourcePoolCondition              | The search is filtered by a resource pool condition.                                                                                                                                                             |
 | ResourcePoolName                   | The search is filtered by a resource pool name.                                                                                                                                                                  |
-| ResourceServerCondition            | The search is filtered by a resource server condition.                                                                                      |
+| ResourceServerCondition            | The search is filtered by a resource server condition.                                                                                                                                                           |
 | ResourceServerId                   | The search is filtered by a resource server artifact identifier.                                                                                                                                                 |
-| WorkspaceCondition                 | The search is filtered by a workspace condition.                                                                                            |
-| WorkspaceId                        | The search is filtered by a workspace artifact identifier. All file shares can be retrieved by setting this value to [Workspace.AdminWorkspaceId](#admin-workspace) **but requires admin rights.** |
+| WorkspaceCondition                 | The search is filtered by a workspace condition.                                                                                                                                                                 |
+| WorkspaceId                        | The search is filtered by a workspace artifact identifier. All file shares can be retrieved by setting this value to [Workspace.AdminWorkspaceId](#admin-workspace) **but requires full system admin rights.**               |
 
 ***Note:** All condition search options support standard Relativity query operators.*
 
