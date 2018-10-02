@@ -264,6 +264,14 @@ try
         CancellationToken token = cancellationTokenSource.Token;
 
         // Regardless of transfer client, the approach below remains the same.
+
+        // The transfer context object provides several events and supplied to the transfer requests below.
+        TransferContext context = new TransferContext();
+        context.TransferPathIssue += (sender, args) => { };
+        context.TransferRequest += (sender, args) => { };
+        context.TransferPathProgress += (sender, args) => { };
+        context.TransferJobRetry += (sender, args) => { };
+        context.TransferStatistics += (sender, args) => { };
         
         // Get the same workspace specified above to get the default file share.
         Workspace workspace = await client.GetWorkspaceAsync(token).ConfigureAwait(false);
@@ -278,7 +286,7 @@ try
         };
 
         // Add all upload transfer path objects to the request.
-        TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath);
+        TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
         
         // Submit the request and await completion.
         ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
@@ -297,7 +305,7 @@ try
         };
 
         // Add all download transfer path objects to the request, submit the request, and await completion.
-        TransferRequest downloadRequest = TransferRequest.ForDownload(remoteSourcePath);
+        TransferRequest downloadRequest = TransferRequest.ForDownload(remoteSourcePath, context);
         ITransferResult downloadResult = await client.TransferAsync(downloadRequest, token).ConfigureAwait(false);
 
         if (downloadResult.Status != TransferStatus.Successful)
