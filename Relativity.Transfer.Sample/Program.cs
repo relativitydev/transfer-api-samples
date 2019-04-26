@@ -15,11 +15,12 @@ namespace Relativity.Transfer.Sample
 
     public class Program
     {
-        // TODO: Update these parameters.
-        private const string RelativityUrl = "https://relativity_host.com/Relativity";
+		// TODO: These parameters must be updated to your own environment.
+		// Note: Transfer API is expecting this URL to represent the base URL.
+		private const string RelativityUrl = "https://relativity_host.com";
         private const string RelativityUserName = "jsmith@example.com";
         private const string RelativityPassword = "UnbreakableP@ssword777";
-        private const int WorkspaceId = 1027428;
+        private const int WorkspaceId = 123456;
 
         public static void Main(string[] args)
         {
@@ -33,6 +34,7 @@ namespace Relativity.Transfer.Sample
                 Task.Run(
                     async () =>
                         {
+							// Note: the RelativityTransferLog demonstrates how to create an ITransferLog implementation for Relativity Logging.
                             using (ITransferLog transferLog = CreateTransferLog())
                             using (IRelativityTransferHost host = CreateRelativityTransferHost(transferLog))
                             using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
@@ -126,12 +128,13 @@ namespace Relativity.Transfer.Sample
 
         private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog log)
         {
-            if (string.Compare(RelativityUrl, "https://relativity_host.com/Relativity", StringComparison.OrdinalIgnoreCase) == 0 ||
+			// Make sure the user actually changed the sample parameters!
+            if (string.Compare(RelativityUrl, "https://relativity_host.com", StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(RelativityUserName, "jsmith@example.com", StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(RelativityPassword, "UnbreakableP@ssword777", StringComparison.OrdinalIgnoreCase) == 0 ||
-                WorkspaceId == 1)
+                WorkspaceId == 123456)
             {
-                throw new ApplicationException("You must update all Relativity connection parameters in order to run this application.");
+                throw new ApplicationException("You must update all Relativity connection parameters at the top of the class in order to run this sample.");
             }
         
             Uri url = new Uri(RelativityUrl);
