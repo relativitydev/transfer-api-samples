@@ -1768,132 +1768,192 @@ configuration.TargetFileShare = fileShare;
 
 ***Note:** When specifying a target file share and using **remote** UNC paths, it's imperative for the UNC paths to share the same base path as the file share. This can be problematic for transfer clients like Aspera that doesn't support native UNC paths.*
 
+
+
 ### Local and remote enumeration
 So far, the examples have included a small number of transfer paths. What if you want to create transfer paths from one or more search paths? More importantly, what about datasets consisting of hundreds of thousands or even millions of paths? Due to the RAM and CPU required to manage such large datasets, a different approach is required.
 
-The `IPathEnumerator` interface includes the following methods:
+TAPI provides an enumeration feature, which delivers the following capabilities:
+* Time-efficient enumeration of local paths,
+* Filtering paths,
+* Grouping paths into batches and serializing them,
+* Current statistics of enumeration's progress.
 
+Local enumeration is provided out of the box whereas remote enumeration should be provided by a customer of a given API.
+
+#### Define enumeration
+The enumeration API is built upon fluent API pattern and can be easily customized. The `EnumerationBuilder` class serves the method to customize the enumeration for your needs:
+
+The below samples depict the usage of EnumerationBuilder class, which exposes a fluent interface in order to build enumeration object.
+
+#### Upload local files
+The method `ForUpload()` will use the built-in, parallel enumerator to retrieve all paths for upload. It can be CPU-intensive, but it's the fastest method for it:
 ```csharp
-public interface IPathEnumerator
-{
-    Task<EnumeratedPathsResult> EnumerateAsync(PathEnumeratorContext context);
-    Task<EnumeratedPathsResult> EnumerateAsync(PathEnumeratorContext context, CancellationToken token);
-    Task<SerializedPathsResult> SerializeAsync(string batchDirectory, PathEnumeratorContext context);
-    Task<SerializedPathsResult> SerializeAsync(string batchDirectory, PathEnumeratorContext context, CancellationToken token);
-}
+/// <summary>
+/// Creates enumeration builder for local enumeration
+/// </summary>
+/// <param name="logger">Logger that will be used to log enumeration execution</param>
+/// <param name="correlationId">CorrelationId used to associate events happening throughout the operation</param>
+public static EnumerationBuilder ForUpload(ITransferLog logger, Guid correlationId)
+ 
+usage:
+var enumeration = EnumerationBuilder
+                    .ForUpload(logger, Guid.NewGuid())
+                    .StartFrom(filesOrDirectories)
+                    .Create();
 ```
 
-A path enumerator object is capable of providing the following functionality:
-
-* Searches local and remote storage.
-* The `PathEnumeratorContext` object provides options and events.
-* Use enumeration to create `TransferPath` objects in memory.
-* Use serialization to persist `TransferPath` objects to disk.
-* The `SerializedBatch` object details the file/byte counts and the path on disk.
-
-As the examples below demonstrate, enumeration is slightly easier than batching because there are fewer moving parts. The decision to use one over the other ultimately comes down to the size of the dataset being transferred.
-
-The general rule of thumb: use enumeration **when are are fewer than 1M files**; otherwise, serialization should be used.
-
-#### Creating the IPathEnumerator
-The `ITransferClient` is responsible for creating an`IPathEnumerator` object. The ability to enumerate local paths is provided by TAPI; however, enumerating remote paths is entirely dependent on the client. When creating the object, the API caller is required to specify whether to create a local or remote instance.
-
-
+You can provide your own enumerator too - in case of specific needs (e.g. you already have all paths to transfer and you don't want to search through catalogs):
 ```csharp
-using (ITransferClient client = host.CreateClient(clientConfiguration))
-{
-    const bool Local = true;
-    var pathEnumerator = client.CreatePathEnumerator(Local);
-}
+/// <summary>
+/// Creates enumeration builder for local enumeration using custom enumerator
+/// </summary>
+/// <param name="enumerator">Custom enumerator</param>
+/// <param name="logger">Logger that will be used to log enumeration execution</param>
+/// <param name="correlationId">CorrelationId used to associate events happening throughout the operation</param>
+public static IEnumerationNecessaryActionsBuilder ForUpload(IEnumeratorProvider enumerator, ITransferLog logger, Guid correlationId)
+
+usage:
+IEnumerationProvider customEnumerator = /* ... */;
+var enumeration = EnumerationBuilder
+                    .ForUpload(customEnumerator, logger, Guid.NewGuid())
+                    .StartFrom(filesOrDirectories)
+                    .Create();
 ```
 
-#### Enumeration properties and events
-All enumeration properties and events are exposed through the `PathEnumeratorContext` object and include:
-
-| Property                           | Description |
-| ---------------------------------- |----------------------------------------------------------------------------------- |
-| Configuration                      | The `ClientConfiguration` object to provide enumeration configuration options. |
-| FileNames                          | The **optional** list of filenames to filter during the search. |
-| FileShare                          | The **optional** file share to search (remote only). |
-| MaxDegreeOfDirectoryParallelism    | The degree of parallelism to search **local** directories. The `Environment.ProcessorCount` value is used by default. |
-| MaxDegreeOfFileParallelism         | The degree of parallelism to search **local** files. The `Environment.ProcessorCount` value is used by default. |
-| MaxDegreeOfRemotePagingParallelism | The degree of parallelism to apply when paging is used to search **remote** directories or files. The `Environment.ProcessorCount` value is used by default. |
-| PathError                          | Occurs when a path error (IE IOException) takes place during the enumeration. The event argument provides the path and associated Exception. |
-| Progress                           | Occurs when the configured ProgressRateSeconds has elapsed. The event argument provides the total bytes, files, directories, and path errors. |
-| PreserveFolders                    | Enables or disables whether to preserve the original folder structure. |
-| ProgressRateSeconds                | The rate, in seconds, that `Progress` events are raised. |
-| Option                             | The option that specifies whether to search only the top directory or the top directory and all sub-directories. |
-| SearchPaths                        | The list of local or remote paths to search. |
-| SyncBatchTotals                    | Enables or disables whether to update all serialized JSON batch files with total byte/file counts **during** the search process. The same counts are automatically updated once the search is completed. |
-| TargetPath                         | The target path applied to all enumerated or serialized `TransferPath` objects. |
-
-The following example demonstrates how a typical context object is constructed.
-
+#### Download files from remote server
+In case of download, you need to provide a custom enumerator of remote paths to the method `ForDownload()`:
 ```csharp
-// Assume these have already been assigned.
-ClientConfiguration configuration;
-string searchPath;
-string targetPath;
-PathEnumeratorContext context = new PathEnumeratorContext(
-    configuration,
-    searchPath,
-    targetPath,
-    PathEnumeratorOption.AllDirectories);
-context.ProgressRateSeconds = 5;
-context.PathError += (sender, args) => { };
-context.Progress += (sender, args) => { };
+/// <summary>
+/// Creates enumeration builder for remote enumeration
+/// </summary>
+/// <param name="enumerator">Custom enumerator</param>
+/// <param name="logger">Logger that will be used to log enumeration execution</param>
+/// <param name="correlationId">CorrelationId used to associate events happening throughout the operation</param>
+public static EnumerationBuilder ForDownload(IEnumeratorProvider enumerator, ITransferLog logger, Guid correlationId)
+ 
+usage:
+var enumeration = EnumerationBuilder
+                    .ForDownload(remoteEnumerator, logger, Guid.NewGuid())
+                    .StartFrom(filesOrDirectories)
+                    .Create();
 ```
 
-#### Enumerating local or remote paths
-The `EnumerateAsync` method asynchronously performs the local or remote search and returns a result object containing the list of all enumerated paths.
+#### Set the entry point
+You might notice the method `StartFrom(IEnumerable<INode> sourceNodes);` - it takes a list of files and folders to be iterated. Content of the folders will be iterated as well.
+
+#### Required and additional configuration
+The bare minimum to define an enumerator is to call methods:
+1. `ForUpload()` or `ForDownload()`,
+2. `StartFrom()`.
+3. `Create()`
+
+Below you'll find how to specify additional capabilities.
+
+#### Filtering
+Use the method `WithFilters()` to enrich enumeration object with filtering functionality. Provide collection of filters to be applied against each path and a callback function which will be executed every time a given path meets at least one filter.
 
 ```csharp
-// Perform a local search.
-const bool Local = true;
-IPathEnumerator pathEnumerator = client.CreatePathEnumerator(Local);
-
-// Assume the context has already been created and properly configured.
-EnumeratedPathsResult result = await pathEnumerator.EnumerateAsync(pathEnumeratorContext, token).ConfigureAwait(false);
-IEnumerable<TransferPath> paths = result.Paths;
+/// <summary>
+/// Enriches enumeration process with filtering
+/// </summary>
+/// <param name="filters">Enumerable of custom filters</param>
+/// <param name="skippedItemHandler">Callback handler executed every time when enumerated path meets at least one filter</param>
+public EnumerationBuilder WithFilters(IEnumerable<INodeFilter> filters, IEnumerationHandler<EnumerationIssue> skippedItemHandler)
+ 
+usage:
+var filterHandler = new EnumerationHandler<EnumerationIssue>(item=>
+                        {
+                            Console.WriteLine($"{item.Path} {item.ErrorMessage}");
+                        });
+var enumeration = EnumerationBuilder
+                    .ForDownload(remoteEnumerator, logger, Guid.NewGuid())
+                    .StartFrom(filesOrDirectories)
+                    .WithFilters(filters, filterHandler)
+                    .Create();
 ```
 
-#### Serializing local or remote paths
-The `SerializeAsync` method asynchronously performs the local or remote search and returns a result object containing the list of all serialized batches.
+TAPI provides the following implementations of `INodeFilter` - you can define your own.
+* `AspxExtensionFilter` - filters out all files with `.aspx` extension (to prevent errors of Aspera transfers),
+* `NoReadAccessFileNodeFilter` - checks user's permission against a file (can slow down enumeration significantly),
+* `PathLengthFilter` - finds paths longer than Aspera and Fileshare support,
+* `R1PathSizeFilter` - finds paths longer than RelativityOne supports.
+
+#### Statistics
+You can define your handler to react on enumeration updates:
 
 ```csharp
-// Perform a remote search.
-const bool Local = false;
-IPathEnumerator pathEnumerator = client.CreatePathEnumerator(Local);
+/// <summary>
+/// Enriches enumeration process with statistics reporting
+/// </summary>
+/// <param name="statisticsHandler">Callback handler executed on every enumerated path to report enumeration overall statistic</param>
+public EnumerationBuilder WithStatistics(IEnumerationHandler<EnumerationStatistic> statisticsHandler)
 
-// The GlobalSettings defines the max number of bytes or files per batch.
-// IE Each serialized batch file contains no more than 100GB or 50k files (whichever comes first).
-GlobalSettings.Instance.MaxBytesPerBatch = 107374182400;
-GlobalSettings.Instance.MaxFilesPerBatch = 50000;
-
-// Assume the context has already been created and properly configured.
-SerializedPathsResult result = await pathEnumerator.SerializeAsync(batchDirectory, pathEnumeratorContext, token).ConfigureAwait(false);
-IEnumerable<SerializedBatch> batches = result.Batches;
+usage:
+var statisticsHandler= new EnumerationHandler<EnumerationStatistic>(stats =>
+            {
+                Console.WriteLine($"Total bytes: {stats.TotalBytes} Total files: {stats.TotalFiles} Total Empty directories: {stats.TotalEmptyDirectories}");
+            });
+ 
+var enumeration = EnumerationBuilder
+                    .ForUpload(logger, Guid.NewGuid())
+                    .StartFrom(filesOrDirectories)
+                    .WithStatistics(progressHandler)
+                    .Create();
 ```
 
-Once the serialization completes, all `TransferPath` objects are persisted to disk in one or more batches. Batch files are in JSON format and saved within the specified batch directory. Existing transfer methods can be called to transfer all paths contained within a given batch object. It's understood that batching doesn't change existing transfer specific API's; however, it's understood that **statistics are relative to the batch being transferred**.
-
-The following example is a typical use-case for splitting each batch into a separate transfer job.
+#### Batching
+Grouping paths in batches is recommended for transfers with more than 1M files. Batches are stored on disk and you have to specify a handler to intercept all stored batches.
 
 ```csharp
-// Assume the request has already been created and properly configured.
-ITransferRequest request;
-
-foreach (SerializedBatch batch in result.Batches)
-{
-    using (ITransferJob job = await client.CreateJobAsync(request, token).ConfigureAwait(false))
+/// <summary>
+/// Enriches enumeration process with dividing enumerated paths into chunks and converting them into batches
+/// </summary>
+/// <param name="destinationNode">The destination node.</param>
+/// <param name="batchSerializationDirectory">A place to serialize series of paths that belong to batches</param>
+/// <param name="batchCreatedHandler">Callback handler executed on every batch created</param>
+/// <returns>This builder</returns>
+public EnumerationBuilder WithBatching(INode destinationNode, IDirectory batchSerializationDirectory, IEnumerationHandler<SerializedBatch> batchCreatedHandler)
+ 
+usage:
+var batchCreatedHandler = new EnumerationHandler<SerializedBatch>(batch =>
     {
-        await job.AddPathsAsync(batch, token).ConfigureAwait(false);
-        ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
+        Console.WriteLine($"{batch.BatchNumber} {batch.File} {batch.TotalFileCount}");
+    });
+ 
+var enumeration = EnumerationBuilder
+                    .ForUpload(logger, Guid.NewGuid())
+                    .StartFrom(filesOrDirectories)
+                    .WithBatching(targetDirectoryOrDrive, directoryToStoreBatches, batchCreatedHandler)
+                    .Create();
+```
 
-        // Handle the result as always.
-    }
+You can define batching parameters (i.e. max number of files and bytes in a single batch) within `GlobalSettings` class:
+1. `GlobalSettings.MaxFilesPerBatch`
+2. `GlobalSettings.MaxBytesPerBatch`
+
+#### EnumerationBuilder - full interface
+```csharp
+public interface EnumerationBuilder : IEnumerationNecessaryActionsBuilder, IEnumerationFinalActionsBuilder
+{
+    static IEnumerationNecessaryActionsBuilder ForUpload(ITransferLog logger, Guid correlationId);
+
+    static IEnumerationNecessaryActionsBuilder ForUpload(IEnumeratorProvider enumerator, ITransferLog logger, Guid correlationId);
+
+    static IEnumerationNecessaryActionsBuilder ForDownload(IEnumeratorProvider enumerator, ITransferLog logger, Guid correlationId);
+
+	IEnumerationFinalActionsBuilder StartFrom(IEnumerable<INode> sourceNodes);
+
+    IEnumerationFinalActionsBuilder WithFilters(IEnumerable<INodeFilter> filters, IEnumerationHandler<EnumerationIssue> skippedItemHandler);
+
+    IEnumerationFinalActionsBuilder WithStatistics(IEnumerationHandler<EnumerationStatistic> statisticsHandler);
+
+    IEnumerationFinalActionsBuilder WithBatching(INode destinationNode, IDirectory batchSerializationDirectory, IEnumerationHandler<SerializedBatch> batchCreatedHandler);
+
+    IEnumerationOrchestrator Create();
 }
 ```
+
 
 ### Change job data rate (Aspera-Only)
 The `ClientConfiguration` object supports setting a minimum and target data rate. There are situations where the API user would like to *change* the data rate at runtime. To facilitate this feature, the `ITransferJob` object allows each TAPI client to provide an implementation.
