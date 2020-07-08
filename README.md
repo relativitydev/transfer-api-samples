@@ -731,7 +731,7 @@ private static TransferContext CreateTransferContext()
         {
             // Progress has already factored in file-level vs byte-level progress.
             Console2.WriteLine(
-                "EWvent=TransferStatistics, Progress: {0:00.00}%, Transfer rate: {1:00.00} Mbps, Remaining: {2:hh\\:mm\\:ss}",
+                "Event=TransferStatistics, Progress: {0:00.00}%, Transfer rate: {1:00.00} Mbps, Remaining: {2:hh\\:mm\\:ss}",
                 args.Statistics.Progress,
                 args.Statistics.TransferRateMbps,
                 args.Statistics.RemainingTime);
