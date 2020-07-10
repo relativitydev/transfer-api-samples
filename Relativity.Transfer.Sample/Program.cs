@@ -21,14 +21,21 @@ namespace Relativity.Transfer.Sample
 
     public class Program
     {
-        // TODO: These parameters must be updated to your own environment.
-        // Note: Transfer API is expecting this URL to represent the base URL.
-        private const string RelativityUrl = "https://relativity.com";
-        private const string RelativityUserName = "username";
-        private const string RelativityPassword = "pwd";
-        private const int WorkspaceId = 1234;
+		// TODO: These parameters must be updated to your own environment.
+		// Note: Transfer API is expecting this URL to represent the base URL.
+		private const string RelativityUrl = "https://relativity.com";
+		private const string RelativityUserName = "username";
+		private const string RelativityPassword = "pwd";
+		private const int WorkspaceId = 1234;
 
-        public static void Main(string[] args)
+		// TODO: These parameters must be updated to download operation in HTTP mode (basic sample).
+		// Note: HTTP mode is expecting an artifact id and a file guid
+		private const int FileArtifactId = -1;
+		private const string FileGuid = "";
+		// Note: HTTP mode can rename downloaded file
+		private const string DownloadedFileName = "EDRM-Sample1.JPG";
+
+		public static void Main(string[] args)
         {
             Console2.Initialize();
             Console2.WriteLine("Relativity Transfer Sample");
@@ -141,6 +148,15 @@ namespace Relativity.Transfer.Sample
                 WorkspaceId == 123456)
             {
                 throw new ApplicationException("You must update all Relativity connection parameters at the top of the class in order to run this sample.");
+            }
+
+            if (string.IsNullOrWhiteSpace(FileGuid) ||
+                string.Compare(DownloadedFileName, "EDRM-Sample1.JPG", StringComparison.OrdinalIgnoreCase) == 0 ||
+                FileArtifactId == -1)
+            {
+                Console2.WriteStartHeader("Parameters");
+                Console2.WriteLine(ConsoleColor.DarkYellow, $"One or more download parameters are not set. Please review {nameof(FileArtifactId)}, {nameof(FileGuid)} and {nameof(DownloadedFileName)}.");
+                Console2.WriteEndHeader();
             }
 
             Uri url = EnsureUrl();
@@ -266,17 +282,17 @@ namespace Relativity.Transfer.Sample
                 Console2.WriteStartHeader("Basic Transfer - Upload");
                 TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
                 Console2.WriteLine("Basic upload transfer started.");
-                ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
-                Console2.WriteLine("Basic upload transfer completed.");
-                DisplayTransferResult(uploadResult);
-                Console2.WriteEndHeader();
+				ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
+				Console2.WriteLine("Basic upload transfer completed.");
+				DisplayTransferResult(uploadResult);
+				Console2.WriteEndHeader();
 
                 // Use the local directory to setup the target path.
                 string downloadTargetPath = directory.Path;
                 TransferPath remotePath = new TransferPath
                 {
                     PathAttributes = TransferPathAttributes.File,
-                    SourcePath = uploadTargetPath + "\\EDRM-Sample1.JPG",
+                    SourcePath = $"{uploadTargetPath}\\{DownloadedFileName}",
                     TargetPath = downloadTargetPath
                 };
                 remotePath.AddData(
@@ -284,7 +300,8 @@ namespace Relativity.Transfer.Sample
                     new HttpTransferPathData
                     {
                         ExportType = ExportType.NativeFile,
-                        ArtifactId = -1,
+                        ArtifactId = FileArtifactId,
+                        RemoteGuid = FileGuid,
                         FileFieldArtifactId = -1,
                         LongTextFieldArtifactId = -1
                     });
