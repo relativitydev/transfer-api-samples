@@ -46,8 +46,7 @@ namespace Relativity.Transfer.Sample
                         using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
                         {
                             CancellationToken token = cancellationTokenSource.Token;
-                            await DemoBasicTransferAsync(host, token).ConfigureAwait(false);
-                            await DemoAdvancedTransferAsync(host, token).ConfigureAwait(false);
+                            await DemoAsperaTransferAsync(host, token).ConfigureAwait(false);
                             exitCode = 0;
                         }
                     }).GetAwaiter().GetResult();
@@ -235,71 +234,6 @@ namespace Relativity.Transfer.Sample
             return fileShare;
         }
 
-        private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            RelativityFileShare fileShare = await GetWorkspaceDefaultFileShareAsync(host, token).ConfigureAwait(false);
-            ClientConfiguration configuration = CreateClientConfiguration();
-            using (ITransferClient client = await CreateClientAsync(host, configuration, token).ConfigureAwait(false))
-            using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
-            {
-                // Use the workspace default file share to setup the target path.
-                string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
-
-                // Manually constructing the transfer path to demonstrate basic properties.
-                string sourceFile = Path.Combine(Path.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG");
-                TransferPath localSourcePath = new TransferPath
-                {
-                    // If the following 2 aren't specified, they're inherited from TransferRequest.
-                    Direction = TransferDirection.Upload,
-                    TargetPath = uploadTargetPath,
-
-                    PathAttributes = TransferPathAttributes.File,
-                    Bytes = new System.IO.FileInfo(sourceFile).Length,
-                    SourcePath = sourceFile,
-                    Tag = new { Name = "Hello", Value = "World" }
-                };
-
-                // This decouples all transfer events into a separate object.
-                TransferContext context = CreateTransferContext();
-
-                // Create a transfer request and upload a single local file to the remote target path.
-                Console2.WriteStartHeader("Basic Transfer - Upload");
-                TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
-                Console2.WriteLine("Basic upload transfer started.");
-                ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
-                Console2.WriteLine("Basic upload transfer completed.");
-                DisplayTransferResult(uploadResult);
-                Console2.WriteEndHeader();
-
-                // Use the local directory to setup the target path.
-                string downloadTargetPath = directory.Path;
-                TransferPath remotePath = new TransferPath
-                {
-                    PathAttributes = TransferPathAttributes.File,
-                    SourcePath = uploadTargetPath + "\\EDRM-Sample1.JPG",
-                    TargetPath = downloadTargetPath
-                };
-                remotePath.AddData(
-                    HttpTransferPathData.HttpTransferPathDataKey,
-                    new HttpTransferPathData
-                    {
-                        ExportType = ExportType.NativeFile,
-                        ArtifactId = -1,
-                        FileFieldArtifactId = -1,
-                        LongTextFieldArtifactId = -1
-                    });
-
-                // Create a transfer request to download a single remote file to the local target path.
-                Console2.WriteStartHeader("Basic Transfer - Download");
-                TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, context);
-                Console2.WriteLine("Basic download transfer started.");
-                ITransferResult downloadResult = await client.TransferAsync(downloadRequest, token).ConfigureAwait(false);
-                Console2.WriteLine("Basic download transfer completed.");
-                DisplayTransferResult(downloadResult);
-                Console2.WriteEndHeader();
-            }
-        }
-
         private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
         {
             // Each transfer client can provide a specialized The specialized configuration object provides numerous options to customize the transfer.
@@ -379,14 +313,6 @@ namespace Relativity.Transfer.Sample
 
             stopWatch.Stop();
 
-
-            /*   
-               PathEnumeratorContext pathEnumeratorContext = new PathEnumeratorContext(client.Configuration, new[] { searchLocalPath }, uploadTargetPath);
-               pathEnumeratorContext.PreserveFolders = false;
-               IPathEnumerator pathEnumerator = client.CreatePathEnumerator(Local);
-               EnumeratedPathsResult result = await pathEnumerator.EnumerateAsync(pathEnumeratorContext, token).ConfigureAwait(false);
-
-           */
             Console2.WriteLine("Local Paths: {0}", sourceNode);
             Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", stopWatch.Elapsed);
             Console2.WriteLine("Total files: {0:n0}", totalFileCount);
@@ -397,7 +323,7 @@ namespace Relativity.Transfer.Sample
 
 
 
-        private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
+        private static async Task DemoAsperaTransferAsync(IRelativityTransferHost host, CancellationToken token)
         {
             // Search for the first logical file share.
             const int LogicalFileShareNumber = 1;
@@ -412,36 +338,36 @@ namespace Relativity.Transfer.Sample
             using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
             {
                 // Create a job-based upload transfer request.
-                Console2.WriteStartHeader("Advanced Transfer - Upload");
+                Console2.WriteStartHeader("Aspera Transfer - Upload");
                 string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
                 IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(uploadTargetPath, token).ConfigureAwait(false);
                 TransferContext context = CreateTransferContext();
                 TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
                 uploadJobRequest.Application = "Github Sample";
-                uploadJobRequest.Name = "Advanced Upload Sample";
+                uploadJobRequest.Name = "Aspera Upload Sample";
 
                 // Create a transfer job to upload the local sample dataset to the target remote path.
                 using (ITransferJob job = await client.CreateJobAsync(uploadJobRequest, token).ConfigureAwait(false))
                 {
-                    Console2.WriteLine("Advanced upload started.");
+                    Console2.WriteLine("Aspera upload started.");
 
                     // Paths added to the async job are transferred immediately.
                     await job.AddPathsAsync(localSourcePaths, token).ConfigureAwait(false);
 
                     // Await completion of the job.
                     ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-                    Console2.WriteLine("Advanced upload completed.");
+                    Console2.WriteLine("Aspera upload completed.");
                     DisplayTransferResult(result);
                     Console2.WriteEndHeader();
                 }
 
                 // Create a job-based download transfer request.
-                Console2.WriteStartHeader("Advanced Transfer - Download");
+                Console2.WriteStartHeader("Aspera Transfer - Download");
                 string downloadTargetPath = directory.Path;
                 TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
                 downloadJobRequest.Application = "Github Sample";
-                downloadJobRequest.Name = "Advanced Download Sample";
-                Console2.WriteLine("Advanced download started.");
+                downloadJobRequest.Name = "Aspera Download Sample";
+                Console2.WriteLine("Aspera download started.");
 
                 // Create a transfer job to download the sample dataset to the target local path.
                 using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token).ConfigureAwait(false))
@@ -458,7 +384,7 @@ namespace Relativity.Transfer.Sample
 
                     // Await completion of the job.
                     ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-                    Console2.WriteLine("Advanced download completed.");
+                    Console2.WriteLine("Aspera download completed.");
                     DisplayTransferResult(result);
                     Console2.WriteEndHeader();
                 }
