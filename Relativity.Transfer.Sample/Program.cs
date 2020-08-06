@@ -127,13 +127,13 @@ namespace Relativity.Transfer.Sample
                 throw new ApplicationException("You must update all Relativity connection parameters at the top of the class in order to run this sample.");
             }
 
-            Uri url = GetInstnaceUrl();
+            Uri url = GetInstanceUrl();
             IHttpCredential credential = new BasicAuthenticationCredential(RelativityUserName, RelativityPassword);
             RelativityConnectionInfo connectionInfo = new RelativityConnectionInfo(url, credential, WorkspaceId);
             return new RelativityTransferHost(connectionInfo, log);
         }
 
-        private static Uri GetInstnaceUrl()
+        private static Uri GetInstanceUrl()
         {
 	        var urlTmp = new Uri(RelativityUrl);
 	        var uriString = urlTmp.GetLeftPart(UriPartial.Authority);

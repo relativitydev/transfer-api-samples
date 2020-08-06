@@ -399,11 +399,6 @@ namespace Relativity.Transfer.Sample
         {
         }
 
-        private static ClientConfiguration CreateClientConfiguration()
-        {
-            return null;
-        }
-
         private static ITransferLog CreateTransferLog()
         {
             return null;
@@ -422,12 +417,6 @@ namespace Relativity.Transfer.Sample
 
         private static TransferContext CreateTransferContext()
         {
-            return null;
-        }
-
-        private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            await Task.Delay(1);
             return null;
         }
 
@@ -567,30 +556,6 @@ private static void InitializeGlobalSettings()
     GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 10;
     Console2.WriteLine("Configured miscellaneous settings.");
     Console2.WriteEndHeader();
-}
-```
-</details>
-
-#### Create ClientConfiguration object
-The `CreateClientConfiguration()` method is responsible for creating and configuring the [ClientConfiguration](#clientconfiguration) instance.
-
-Find the `CreateClientConfiguration()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static ClientConfiguration CreateClientConfiguration()
-{
-    // The configuration object provides numerous options to customize the transfer.
-    return new ClientConfiguration
-    {
-        FileNotFoundErrorsRetry = false,
-        MaxHttpRetryAttempts = 2,
-        PreserveDates = true,
-
-        // The target data rate must be < GlobalSettings.Instance.MaxAllowedTargetDataRateMbps.
-        TargetDataRateMbps = 5
-    };
 }
 ```
 </details>
@@ -834,28 +799,64 @@ configuration.TargetFileShare = fileShare;
 ```
 
 #### Search local source paths
-Data transfer workflows often involve large datasets stored on network servers or other enterprise storage devices. In many cases, the data transfer operator would like to transfer all of the files contained within a specified path. The [IPathEnumerator](local-and-remote-enumeration) object is constructed from `ITransferClient` and can be used to efficiently search for and create `TransferPath` objects. For large datasets (IE 1M+), the same API supports serializing the results to disk and batching the results in smaller chunks. Since the test dataset is small, the enumeration option is used. Once the local dataset search is completed, the `EnumeratedPathsResult` object is returned to include all discovered `TransferPath` objects and other useful metrics.
+Data transfer workflows often involve large datasets stored on network servers or other enterprise storage devices. In many cases, the data transfer operator would like to transfer all of the files contained within a specified path. It's achieved with enumerators, created with `EnumerationBuilder` class.
+Enumerators supports features like:
+* reporting current statistics, 
+* batching (dividing transfer on smaller chunks),
+* filtering files and directories.
+
+For large datasets (IE 1M+), it's recommended to serialize the results to disk and batching the results in smaller chunks. Since the test dataset is small, the enumeration option is used. Enumeration returns the `IEnumerable` of `TransferPath` objects and uses the lambda expression to report useful statistics.
 
 Find the `SearchLocalSourcePathsAsync()` empty method in the `Program` class and replace with the following:
 
 <details><summary>View source code</summary>
 
 ```csharp
-private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath, CancellationToken token)
+private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(CancellationToken token)
 {
     Console2.WriteStartHeader("Search Paths");
     string searchLocalPath = Path.Combine(Environment.CurrentDirectory, "Resources");
-    const bool Local = true;
-    PathEnumeratorContext pathEnumeratorContext = new PathEnumeratorContext(client.Configuration, new[] { searchLocalPath }, uploadTargetPath);
-    pathEnumeratorContext.PreserveFolders = false;
-    IPathEnumerator pathEnumerator = client.CreatePathEnumerator(Local);
-    EnumeratedPathsResult result = await pathEnumerator.EnumerateAsync(pathEnumeratorContext, token).ConfigureAwait(false);
-    Console2.WriteLine("Local Paths: {0}", result.LocalPaths);
-    Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", result.Elapsed);
-    Console2.WriteLine("Total files: {0:n0}", result.TotalFileCount);
-    Console2.WriteLine("Total bytes: {0:n0}", result.TotalByteCount);
+
+    var paths = new List<TransferPath>();
+    long totalFileCount = 0;
+    long totalByteCount = 0;
+    //const bool Local = true;
+
+    var logger = CreateTransferLog();
+
+    var sourceNode = NodeParser.Node()
+        .WithContext(NullNodeContext.Instance)
+        .WithPath(searchLocalPath)
+        .Parse<IDirectory>();
+
+    INode[] sourceNodes = { sourceNode };
+    var pathEnumerator = EnumerationBuilder.ForUpload(logger, Guid.NewGuid())
+        .StartFrom(sourceNodes)
+        .WithStatistics(new SynchronousHandler<EnumerationStatistic>(
+            statistic =>
+            {
+                totalFileCount = statistic.TotalFiles;
+                totalByteCount = statistic.TotalBytes;
+            }))
+        .Create();
+
+
+    var stopWatch = new Stopwatch();
+    stopWatch.Start();
+    await Task.Run(() =>
+    {
+        paths.AddRange(pathEnumerator.LazyEnumerate(token)
+            .Select(node => new TransferPath(node.AbsolutePath)));
+    }, token).ConfigureAwait(false);
+
+    stopWatch.Stop();
+
+    Console2.WriteLine("Local Paths: {0}", sourceNode);
+    Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", stopWatch.Elapsed);
+    Console2.WriteLine("Total files: {0:n0}", totalFileCount);
+    Console2.WriteLine("Total bytes: {0:n0}", totalByteCount);
     Console2.WriteEndHeader();
-    return result.Paths.ToList();
+    return paths;
 }
 ```
 </details>
