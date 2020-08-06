@@ -60,7 +60,7 @@ If a direct File Share transfer is used, there is effectively no limit to the pa
 As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and won't be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
 
 ## Sample solution and tutorial
-The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications and demonstrates basic and advanced API usage.
+The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications and demonstrates Aspera API usage.
 
 Prerequisites for running the solution:
 
@@ -68,15 +68,14 @@ Prerequisites for running the solution:
 * A Relativity instance that you can connect to
 * Valid Relativity credentials
 
-The next sections incrementally builds the solution to demonstrate both basic and advanced TAPI features.
+The next sections incrementally builds the solution to demonstrate Aspera TAPI features.
 
 * [Project skeleton](#project-skeleton)
 * [Object model](#object-model)
-* [Basic demo](#basic-demo)
-* [Advanced demo](#advanced-demo)
+* [Aspera demo](#aspera-demo)
 
 ### Project skeleton
-This section creates the C# console application used to support the basic and advanced demos.
+This section creates the C# console application used to support the Aspera demo.
 
 * [Clone GIT repository](#clone-git-repository)
 * [New console project](#new-console-project)
@@ -323,7 +322,7 @@ catch (TransferException e)
 </details>
 
 #### Replace Program class
-The `Program.cs` class provides a skeleton to setup TAPI and perform simple and advanced transfers.
+The `Program.cs` class provides a skeleton to setup TAPI and perform Aspera transfers.
 
 Copy and paste the source below to replace the existing `Program.cs` class.
 
@@ -364,8 +363,7 @@ namespace Relativity.Transfer.Sample
                             using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
                             {
                                 CancellationToken token = cancellationTokenSource.Token;
-                                await DemoBasicTransferAsync(host, token).ConfigureAwait(false);
-                                await DemoAdvancedTransferAsync(host, token).ConfigureAwait(false);
+                                await DemoAsperaTransferAsync(host, token).ConfigureAwait(false);
                                 exitCode = 0;
                             }
                         }).GetAwaiter().GetResult();
@@ -433,11 +431,6 @@ namespace Relativity.Transfer.Sample
             return null;
         }
 
-        private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            await Task.CompletedTask.ConfigureAwait(false);
-        }
-
         private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
         {
             return null;
@@ -455,7 +448,7 @@ namespace Relativity.Transfer.Sample
             return null;
         }
 
-        private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
+        private static async Task DemoAsperaTransferAsync(IRelativityTransferHost host, CancellationToken token)
         {
             await Task.CompletedTask.ConfigureAwait(false);
         }
@@ -744,180 +737,14 @@ private static TransferContext CreateTransferContext()
 
 Verify the solution builds successfully. Next, Start or debug the project and ensure a transfer client object is constructed and the application terminates with a zero exit code.
 
-### Basic demo
-At this point, all helper methods have been defined, the transfer objects have been setup, and the basic demo can be written.
-
-For this demo, the approach is as follows:
-
-* Get the workspace file share object
-* Create an upload transfer request for 1 test file
-* Submit the transfer request, await completion, and display the results
-* Create a download transfer request for the 1 test file that was just uploaded
-* Submit the transfer request, await completion, and display the results
-
-#### Get workspace file share object
-When a Relativity workspace is created, the user must specify a resource pool in order to assign a default file share resource server. Not only is this a convenient way to access file share details but *the user is not required to be an admin to directly access the file share resource server objects.*
-
-To simplify acquiring workspace and file share details, the `IRelativityTransferHost` and `ITransferClient` objects both support a `GetWorkspaceAsync` method to retrieve a `Workspace` object. Given the `Workspace` object, the `DefaultFileShare` property can be used to access the UNC path.
-
-Find the `GetWorkspaceDefaultFileShareAsync` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
-{
-    Console2.WriteStartHeader("Get Workspace File Share");
-    Workspace workspace = await host.GetWorkspaceAsync(token).ConfigureAwait(false);
-    RelativityFileShare fileShare = workspace.DefaultFileShare;
-    DisplayFileShare(fileShare);
-    Console2.WriteEndHeader();
-    return fileShare;
-}
-```
-</details>
-
-#### Replace DemoBasicTransferAsync method
-Find the `DemoBasicTransferAsync` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task DemoBasicTransferAsync(IRelativityTransferHost host, CancellationToken token)
-{
-    RelativityFileShare fileShare = await GetWorkspaceDefaultFileShareAsync(host, token).ConfigureAwait(false);
-    ClientConfiguration configuration = CreateClientConfiguration();
-    using (ITransferClient client = await CreateClientAsync(host, configuration, token).ConfigureAwait(false))
-    using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
-    {
-        // Use the workspace default file share to setup the target path.
-        string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
-
-        // Manually constructing the transfer path to demonstrate basic properties.
-        string sourceFile = Path.Combine(Path.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG");
-        TransferPath localSourcePath = new TransferPath
-        {
-            // If the following 2 aren't specified, they're inherited from TransferRequest.
-            Direction = TransferDirection.Upload,
-            TargetPath = uploadTargetPath,
-
-            PathAttributes = TransferPathAttributes.File,
-            Bytes = new System.IO.FileInfo(sourceFile).Length,
-            SourcePath = sourceFile,
-            Tag = new { Name = "Hello", Value = "World" }
-        };
-
-        // This decouples all transfer events into a separate object.
-        TransferContext context = CreateTransferContext();
-
-        // Create a transfer request and upload a single local file to the remote target path.
-        Console2.WriteStartHeader("Basic Transfer - Upload");
-        TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
-        Console2.WriteLine("Basic upload transfer started.");
-        ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
-        Console2.WriteLine("Basic upload transfer completed.");
-        DisplayTransferResult(uploadResult);
-        Console2.WriteEndHeader();
-
-        // Use the local directory to setup the target path.
-        string downloadTargetPath = directory.Path;
-        TransferPath remotePath = new TransferPath
-        {
-            PathAttributes = TransferPathAttributes.File,
-            SourcePath = uploadTargetPath + "\\EDRM-Sample1.JPG",
-            TargetPath = downloadTargetPath
-        };
-
-        // Create a transfer request to download a single remote file to the local target path.
-        Console2.WriteStartHeader("Basic Transfer - Download");
-        TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, context);
-        Console2.WriteLine("Basic download transfer started.");
-        ITransferResult downloadResult = await client.TransferAsync(downloadRequest, token).ConfigureAwait(false);
-        Console2.WriteLine("Basic download transfer completed.");
-        DisplayTransferResult(downloadResult);
-        Console2.WriteEndHeader();
-    }
-}
-```
-</details>
-
-#### Create upload TransferRequest object
-Given the workspace default file share, the upload target path is defined and the `TransferRequest` object is constructed using the `ForUpload` overload:
-
-```csharp
-// Use the workspace default file share to setup the target path.
-string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
-
-// Manually constructing the transfer path to demonstrate basic properties.
-string sourceFile = Path.Combine(Path.Combine(Environment.CurrentDirectory, "Resources"), "EDRM-Sample1.JPG");
-TransferPath localSourcePath = new TransferPath
-{
-    // If the following 2 aren't specified, they're inherited from TransferRequest.
-    Direction = TransferDirection.Upload,
-    TargetPath = uploadTargetPath,
-
-    PathAttributes = TransferPathAttributes.File,
-    Bytes = new System.IO.FileInfo(sourceFile).Length,
-    SourcePath = sourceFile,
-    Tag = new { Name = "Hello", Value = "World" }
-};
-
-// This decouples all transfer events into a separate object.
-TransferContext context = CreateTransferContext();
-
-// Create a transfer request and upload a single local file to the remote target path.
-Console2.WriteStartHeader("Basic Transfer - Upload");
-TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
-```
-
-#### Create download TransferRequest object
-Fundamentally, the download request is just the inverse of the upload request. The remote path is now the source path and the local path is now the target path. The `TransferRequest` object is constructed using the `ForDownload` overload:
-
-```csharp
-// Use the local directory to setup the target path.
-string downloadTargetPath = directory.Path;
-TransferPath remotePath = new TransferPath
-{
-    PathAttributes = TransferPathAttributes.File,
-    SourcePath = uploadTargetPath + "\\EDRM-Sample1.JPG",
-    TargetPath = downloadTargetPath
-};
-
-// Create a transfer request to download a single remote file to the local target path.
-Console2.WriteStartHeader("Basic Transfer - Download");
-TransferRequest downloadRequest = TransferRequest.ForDownload(remotePath, context);
-```
-
-#### Execute TransferAsync method
-The request object is supplied to `TransferAsync` and the caller awaits completion. TAPI internally manages transfer errors and automatically retries *just the files that haven't already been transferred.* Once the transfer completes, the `ITransferResult` object provides key transfer metric and telemetry data.
-
-```csharp
-Console2.WriteLine("Basic upload transfer started.");
-ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
-Console2.WriteLine("Basic upload transfer completed.");
-DisplayTransferResult(uploadResult);
-```
-
-There are **zero** differences in performing a download vs. upload except the supplied transfer request object.
-
-```csharp
-Console2.WriteLine("Basic download transfer started.");
-ITransferResult downloadResult = await client.TransferAsync(downloadRequest, token).ConfigureAwait(false);
-Console2.WriteLine("Basic download transfer completed.");
-DisplayTransferResult(downloadResult);
-```
-
-#### Basic start or debug
-Start or debug the project and ensure 1 file is successfully uploaded/downloaded and the application terminates with a zero exit code. Navigate to the `%TEMP%\Relativity-Transfer\Sample` directory using File Explorer, open the latest date-encoded log file with your favorite text editor, and review the log entries. Because log files can be difficult to view or parse, Relativity Logging was configured with the [Seq](https://getseq.net/) sink - [click here to view the Seq logs](http://localhost:5341/#/events) if Seq has been separately installed.
+### Aspera demo
+Real-world applications typically involve large or even massive datasets that not only require better transfer request management but provide real-time data rate, progress, and time remaining to their users.
 
 For first time executions, Windows may popup a `Windows Defender` window like the one below. If this is presented, click the "Allow access" button.
 
 ![windowsdefender-firewall](https://user-images.githubusercontent.com/32276163/45306961-b2c22580-b4d2-11e8-8e9b-8ee90168d7f9.png)
 
-### Advanced demo
-The basic demo highlights core concepts required by any TAPI-based application. Real-world applications typically involve large or even massive datasets that not only require better transfer request management but provide real-time data rate, progress, and time remaining to their users.
-
-For this demo, the same approach is taken as the `Basic demo` but with a few twists:
+For this demo, the approach is as follows:
 
 * Create an Aspera specific TAPI client
 * Specify a target file share
@@ -1033,13 +860,13 @@ private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITran
 ```
 </details>
 
-#### Replace DemoAdvancedTransferAsync method
-Find the `DemoAdvancedTransferAsync()` empty method in the `Program` class and replace with the following:
+#### Replace DemoAsperaTransferAsync method
+Find the `DemoAsperaTransferAsync()` empty method in the `Program` class and replace with the following:
 
 <details><summary>View source code</summary>
 
 ```csharp
-private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host, CancellationToken token)
+private static async Task DemoAsperaTransferAsync(IRelativityTransferHost host, CancellationToken token)
 {
     // Search for the first logical file share.
     const int LogicalFileShareNumber = 1;
@@ -1054,36 +881,36 @@ private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host
     using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
     {
         // Create a job-based upload transfer request.
-        Console2.WriteStartHeader("Advanced Transfer - Upload");
+        Console2.WriteStartHeader("Aspera Transfer - Upload");
         string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
         IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(client, uploadTargetPath, token).ConfigureAwait(false);
         TransferContext context = CreateTransferContext();
         TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
         uploadJobRequest.Application = "Github Sample";
-        uploadJobRequest.Name = "Advanced Upload Sample";
+        uploadJobRequest.Name = "Aspera Upload Sample";
 
         // Create a transfer job to upload the local sample dataset to the target remote path.
         using (ITransferJob job = await client.CreateJobAsync(uploadJobRequest, token).ConfigureAwait(false))
         {
-            Console2.WriteLine("Advanced upload started.");
+            Console2.WriteLine("Aspera upload started.");
 
             // Paths added to the async job are transferred immediately.
             await job.AddPathsAsync(localSourcePaths, token).ConfigureAwait(false);
 
             // Await completion of the job.
             ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-            Console2.WriteLine("Advanced upload completed.");
+            Console2.WriteLine("Aspera upload completed.");
             DisplayTransferResult(result);
             Console2.WriteEndHeader();
         }
                 
         // Create a job-based download transfer request.
-        Console2.WriteStartHeader("Advanced Transfer - Download");
+        Console2.WriteStartHeader("Aspera Transfer - Download");
         string downloadTargetPath = directory.Path;
         TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
         downloadJobRequest.Application = "Github Sample";
-        downloadJobRequest.Name = "Advanced Download Sample";
-        Console2.WriteLine("Advanced download started.");
+        downloadJobRequest.Name = "Aspera Download Sample";
+        Console2.WriteLine("Aspera download started.");
 
         // Create a transfer job to download the sample dataset to the target local path.
         using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token).ConfigureAwait(false))
@@ -1100,7 +927,7 @@ private static async Task DemoAdvancedTransferAsync(IRelativityTransferHost host
 
             // Await completion of the job.
             ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-            Console2.WriteLine("Advanced download completed.");
+            Console2.WriteLine("Aspera download completed.");
             DisplayTransferResult(result);
             Console2.WriteEndHeader();
         }
@@ -1114,7 +941,7 @@ When defining a `TransferRequest` object to support transfer jobs, `TransferPath
 
 ```csharp
 // Create a job-based upload transfer request.
-Console2.WriteStartHeader("Advanced Transfer - Upload");
+Console2.WriteStartHeader("Aspera Transfer - Upload");
 string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);                                
 TransferContext context = CreateTransferContext();
 TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
@@ -1122,7 +949,7 @@ TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath
 
 ```csharp
 // Create a job-based download transfer request.
-Console2.WriteStartHeader("Advanced Transfer - Download");
+Console2.WriteStartHeader("Aspera Transfer - Download");
 string downloadTargetPath = directory.Path;
 TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
 ```
@@ -1170,7 +997,7 @@ private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToke
 ```
 </details>
 
-#### Advanced start or debug
+#### Aspera start or debug
 Start or debug the project and ensure 5 files are successfully uploaded/downloaded and the application terminates with a zero exit code.
 
 The following sections provide detailed reference for the Transfer API operations illustrated by the sample program above.

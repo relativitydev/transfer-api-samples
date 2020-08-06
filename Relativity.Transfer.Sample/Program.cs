@@ -17,7 +17,6 @@ namespace Relativity.Transfer.Sample
     using Relativity.DataTransfer.Nodes;
     using Relativity.DataTransfer.Nodes.PathConversion;
     using Relativity.Transfer.Enumeration;
-    using Relativity.Transfer.Http;
 
     public class Program
     {
@@ -100,20 +99,6 @@ namespace Relativity.Transfer.Sample
             Console2.WriteEndHeader();
         }
 
-        private static ClientConfiguration CreateClientConfiguration()
-        {
-            // The configuration object provides numerous options to customize the transfer.
-            return new HttpClientConfiguration
-            {
-                FileNotFoundErrorsRetry = false,
-                MaxHttpRetryAttempts = 2,
-                PreserveDates = true,
-
-                // The target data rate must be < GlobalSettings.Instance.MaxAllowedTargetDataRateMbps.
-                TargetDataRateMbps = 5
-            };
-        }
-
         private static ITransferLog CreateTransferLog()
         {
             // This is a standard set of options for any logger.
@@ -142,13 +127,13 @@ namespace Relativity.Transfer.Sample
                 throw new ApplicationException("You must update all Relativity connection parameters at the top of the class in order to run this sample.");
             }
 
-            Uri url = EnsureUrl();
+            Uri url = GetInstnaceUrl();
             IHttpCredential credential = new BasicAuthenticationCredential(RelativityUserName, RelativityPassword);
             RelativityConnectionInfo connectionInfo = new RelativityConnectionInfo(url, credential, WorkspaceId);
             return new RelativityTransferHost(connectionInfo, log);
         }
 
-        private static Uri EnsureUrl()
+        private static Uri GetInstnaceUrl()
         {
 	        var urlTmp = new Uri(RelativityUrl);
 	        var uriString = urlTmp.GetLeftPart(UriPartial.Authority);
@@ -224,16 +209,6 @@ namespace Relativity.Transfer.Sample
             return context;
         }
 
-        private static async Task<RelativityFileShare> GetWorkspaceDefaultFileShareAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            Console2.WriteStartHeader("Get Workspace File Share");
-            Workspace workspace = await host.GetWorkspaceAsync(token).ConfigureAwait(false);
-            RelativityFileShare fileShare = workspace.DefaultFileShare;
-            DisplayFileShare(fileShare);
-            Console2.WriteEndHeader();
-            return fileShare;
-        }
-
         private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
         {
             // Each transfer client can provide a specialized The specialized configuration object provides numerous options to customize the transfer.
@@ -274,7 +249,7 @@ namespace Relativity.Transfer.Sample
             return fileShare;
         }
 
-        private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(string uploadTargetPath, CancellationToken token)
+        private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(CancellationToken token)
         {
             Console2.WriteStartHeader("Search Paths");
             string searchLocalPath = Path.Combine(Environment.CurrentDirectory, "Resources");
@@ -340,7 +315,7 @@ namespace Relativity.Transfer.Sample
                 // Create a job-based upload transfer request.
                 Console2.WriteStartHeader("Aspera Transfer - Upload");
                 string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
-                IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(uploadTargetPath, token).ConfigureAwait(false);
+                IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(token).ConfigureAwait(false);
                 TransferContext context = CreateTransferContext();
                 TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
                 uploadJobRequest.Application = "Github Sample";
