@@ -32,7 +32,6 @@ As of this writing, TAPI is now integrated within the following components and a
 * Remote Desktop Client
 * Import API
 * Relativity One Staging Explorer
-* Transfer CLI
 * R1 File Migrator CLI
 
 ## Supported transfer clients
@@ -41,8 +40,6 @@ The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.micro
 * Aspera
 * File Share
 * HTTP
-* Azure Blob (requires the relativity.transfer.client.azureblob package)
-* Azure Files (requires the relativity.transfer.client.azurefiles package)
 
 ## Long path support
 Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
