@@ -32,7 +32,6 @@ As of this writing, TAPI is now integrated within the following components and a
 * Remote Desktop Client
 * Import API
 * Relativity One Staging Explorer
-* R1 File Migrator CLI
 
 ## Supported transfer clients
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
