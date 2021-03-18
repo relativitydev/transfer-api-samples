@@ -1,5 +1,5 @@
 # Relativity Transfer API for .NET
-You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, HTTP, SMB, and Aspera. You can also stream data from Relativity. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing. Unlike the Import API, TAPI doesn't create Relativity objects associated with the data, for example, documents and RDOs.
+You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, SMB or Aspera. You can also stream data from Relativity. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing. Unlike the Import API, TAPI doesn't create Relativity objects associated with the data, for example, documents and RDOs.
 
 ## Core TAPI features
 The TAPI includes the following core features:
@@ -38,7 +38,6 @@ The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.micro
 
 * Aspera
 * File Share
-* HTTP
 
 ## Long path support
 Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
@@ -49,9 +48,8 @@ The maximum path length now depends on the chosen transfer client.  These limits
 |--------------------------------|-----------------------------------------------------|
 | File Share                     | *N/A*                                               |
 | Aspera                         | 470                                                 |
-| HTTP                           | 222                                                 |
 
-If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. And finally, when using the HTTP transfer client, the limit is 222. HTTP is limited to 222 characters due to a current limitation with our enumeration process, which cannot currently account for how the HTTP transfer client renames transferred files using a 36-character GUID. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file won't be transferred.
+If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file won't be transferred.
 
 As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and won't be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
 
@@ -610,7 +608,7 @@ private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog
 </details>
 
 #### Create ITransferClient object
-If a workspace artifact is specified within the `RelativityConnectionInfo` object, the `CreateClientAsync()` method is designed to query the workspace, determine which transfer clients are supported (Aspera, file share, or HTTP), and choose the optimal client. *If* a client is specified within the `ClientConfiguration` object, the `CreateClient()` method explicitly instructs TAPI to construct a certain type of client. There may be circumstances where direct access to the file share is guaranteed and the FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
+If a workspace artifact is specified within the `RelativityConnectionInfo` object, the `CreateClientAsync()` method is designed to query the workspace, determine which transfer clients are supported (Aspera or file share), and choose the optimal client. *If* a client is specified within the `ClientConfiguration` object, the `CreateClient()` method explicitly instructs TAPI to construct a certain type of client. There may be circumstances where direct access to the file share is guaranteed and the FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
 
 Find the `CreateClientAsync()` empty method in the `Program` class and replace with the following:
 
@@ -1108,9 +1106,8 @@ Before you can create a client, you have to provide a `ClientConfiguration` inst
 | FileNotFoundErrorsRetry    | Enable or disable whether to retry missing file errors.                                                                                                                                                                                     | true                               |
 | FileSystemChunkSize        | The size of each byte chunk transferred over file-system based transfer clients.                                                                                                                                                            | 16KB                               |
 | FileTransferHint           | The hint provided to the transfer client that indicates what type of transfer workflow is being requested. This is generally used by transfer clients to tune and optimize the transfer.                                                    | FileTransferHint.Natives           |
-| HttpChunkSize              | The size of each byte chunk transferred over HTTP based transfer clients.                                                                                                                                                                   | 1MB                                |
-| HttpTimeoutSeconds         | The timeout, in seconds, for an HTTP or REST service call.                                                                                                                                                                                  | 300 seconds                        |
-| MaxHttpRetryAttempts       | The maximum number of retry attempts for an HTTP or REST service call.                                                                                                                                                                      | 5                                  |
+| HttpTimeoutSeconds         | The timeout, in seconds, for REST service call.                                                                                                                                                                                  | 300 seconds                        |
+| MaxHttpRetryAttempts       | The maximum number of retry attempts for REST service call.                                                                                                                                                                      | 5                                  |
 | MaxJobParallelism          | The maximum number of threads used to transfer all paths contained within the transfer job queue.                                                                                                                                           | 1                                  |
 | MaxJobRetryAttempts        | The maximum number of transfer job retry attempts.                                                                                                                                                                                          | 3                                  |
 | MinDataRateMbps            | The minimum data rate in Mbps unit. This isn't supported by all clients but considered a hint to clients that support configurable data rates.                                                                                              | 0                                  |
@@ -1171,10 +1168,6 @@ using (ITransferClient client = host.CreateClient(new AsperaClientConfiguration(
 // I need a file share client.
 using (ITransferClient client = host.CreateClient(new FileShareClientConfiguration()))
 { }
-
-// I need an HTTP client.
-using (ITransferClient client = host.CreateClient(new HttpClientConfiguration()))
-{ }
 ```
 
 The construction can also be driven by a `IDictionary<string, string>` containing name/value pairs. This is ideal in situations where the decision on which client to construct and how to configure is dynamically driven.
@@ -1206,7 +1199,6 @@ When using the dynamic transfer client, a strategy design pattern is used to det
 
 * FileShare
 * Aspera
-* HTTP
 
 The signature for this interface is as follows:
 
