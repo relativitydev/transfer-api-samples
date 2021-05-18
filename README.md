@@ -37,7 +37,10 @@ As of this writing, TAPI is now integrated within the following components and a
 The transfer API uses [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/) design to search and construct clients. Relativity supports the following clients:
 
 * Aspera
-* File Share
+* File share
+
+Aspera transfer mode requires access to configured Aspera service.
+File share transfer mode requires access to locations involved in upload or download for example via vpn.
 
 ## Long path support
 Long path support has been added in TAPI. Previous versions of TAPI had a Windows-defined maximum transfer path limit of 260 characters due to limitations with Microsoft.NET System.IO API calls. In addition to limiting the path length in the CLI, this limitation also had consequences for products that use TAPI (such as the RDC and ROSE), where attempting to transfer any paths over this 260 character limit would result in a transfer failure. This limitation existed regardless of the transfer client used.
@@ -46,470 +49,47 @@ The maximum path length now depends on the chosen transfer client.  These limits
 
 | Transfer Client                | Maximum supported path length                       |
 |--------------------------------|-----------------------------------------------------|
-| File Share                     | *N/A*                                               |
+| File share                     | *N/A*                                               |
 | Aspera                         | 470                                                 |
 
-If a direct File Share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file won't be transferred.
+If a direct file share transfer is used, there is effectively no limit to the path length that can be performed. When using the Aspera transfer client, the maximum path length is now 470 due to limitations with the Aspera API. If a user specifies a source path or target path that is longer than the maximum supported path length, a fatal PathTooLongException will be thrown and the source file won't be transferred.
 
 As part of these updates, a GlobalSetting variable has been added to adjust the behavior when a path that is too long for the chosen client to transfer is found during enumeration. This setting, called `SkipTooLongPaths`, is a boolean value. If `true`, any paths longer than the client supported maximum will be classified as an Error Path, and won't be transferred. However, enumeration and the transfer of all other valid paths will complete as part of the transfer job. If `false`, the enumeration will throw a fatal PathTooLongException upon encountering an invalid path length, and the transfer will fail. No files will be transferred in this situation.
 
-## Sample solution and tutorial
-The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications and demonstrates Aspera API usage.
+## Sample solution
+The `Sample.sln` solution is an out-of-the-box template for developing your own custom transfer applications and demonstrates Aspera and file share API usage.
 
 Prerequisites for running the solution:
 
-* Visual Studio 2015 or 2017
+* Visual Studio 2015, 2017 or 2019
 * A Relativity instance that you can connect to
 * Valid Relativity credentials
 
-The next sections incrementally builds the solution to demonstrate Aspera TAPI features.
+Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
 
-* [Project skeleton](#project-skeleton)
-* [Object model](#object-model)
-* [Aspera demo](#aspera-demo)
-
-### Project skeleton
-This section creates the C# console application used to support the Aspera demo.
-
-* [Clone GIT repository](#clone-git-repository)
-* [New console project](#new-console-project)
-* [Add assembly references](#add-assembly-references)
-* [Add NuGet package references](#add-nuget-package-references)
-* [Copy files and add to project](#copy-files-and-add-to-project)
-* [Update file properties](#update-file-properties)
-* [Update App.config](#update-appconfig)
-
-#### Clone GIT repository
-The sample includes a few helper classes and a small dataset and will get copied into a new project. Open a command prompt and execute the following command:
-
-```bat
-git clone https://github.com/relativitydev/transfer-api-samples.git C:\SourceCode\transfer-api-samples
-```
-
-***Note:** The documentation assumes Visual Studio 2017 is used and that all repositories and solutions are stored within the `C:\SourceCode` directory.*
-
-#### New console project
-Using Visual Studio, create a new `Visual C# Console App (.NET Framework)` project and enter the following parameters:
-
-* Name: `Relativity.Transfer.Sample`
-* Location: `C:\SourceCode`
-* Solution: `Create new solution`
-* Solution name: `Relativity.Transfer.Sample`
-* Framework: `4.6.2`
-
-The window should look like this:
-
-![newproject](https://user-images.githubusercontent.com/32276163/45301410-c1561000-b4c5-11e8-884a-fce792e2068d.png)
-
-#### Add assembly references
-Creating a new C# project should already add the required assembly references. Navigate to the Solution Explorer tab and verify the references are set correctly.
-
-* Right-click the `References` folder item and left-click the `Add Reference...` menu item
-* Left-click the `Framework` sub-menu item within the Reference Manager window
-* Ensure the `System` and `System.Core` checkbox's are ticked
-* Left-click the `OK` button
-
-The `Reference Manager` window should look like this:
-
-![referencemanager](https://user-images.githubusercontent.com/32276163/45234022-6041f880-b289-11e8-8436-d36a074a62e5.png)
-
-#### Add NuGet package references
-Navigate to the Solution Explorer tab and add the NuGet package reference.
-
-* Right-click the `References` folder item and Left-click the `Manage NuGet Packages...` menu item
-* Left-click the `Browse` tab
-* Enter `relativity.transfer.client` within the search field
-* Click the `Install` button
-
-***Note:** Additional dependency packages are automatically installed.*
-
-Left-click the `Installed` tab and the window should look like this:
-
-![packagemanager](https://user-images.githubusercontent.com/32276163/45255788-10266d00-b341-11e8-9186-7111b5f997ab.png)
-
-Verify the solution builds successfully.
-
-#### Copy files and add to project
-The sample repository includes a few helper classes and a small test dataset. All of the files listed below are copied from the `C:\SourceCode\transfer-api-samples` cloned repository and added underneath the `C:\SourceCode\Relativity.Transfer.Sample\Relativity.Transfer.Sample` directory.
-
-* Create a `Resources` solution folder
-    * Navigate to the Solution Explorer tab
-    * Right-click the `Relativity.Transfer.Sample` project item, select the `Add` menu item, and left-click the `New Folder` menu item
-    * Enter `Resources` for the folder name
-* Copy the dataset files to the `Resources` project sub-folder
-    * Open File Explorer
-    * Navigate to the `C:\SourceCode\transfer-api-samples\Relativity.Transfer.Sample\Resources` directory    
-    * Copy all files to the `C:\SourceCode\Relativity.Transfer.Sample\Relativity.Transfer.Sample\Resources` directory
-* Copy the helper source files to the project root directory
-    * Open File Explorer
-    * Navigate to the `C:\SourceCode\transfer-api-samples\Relativity.Transfer.Sample` directory
-    * Copy `AutoDeleteDirectory.cs`, `Console2.cs`, and `LogConfig.xml` to the `C:\SourceCode\Relativity.Transfer.Sample\Relativity.Transfer.Sample` directory
-
-Once all files have been copied, they must be added to the `Relativity.Transfer.Sample` project.
-
-* Navigate to the Solution Explorer tab
-* Left-click the `Show All Files` button within the toolbar at the top of the Solution Explorer
-* Hold the `SHIFT` key and left-click all copied files
-* Left-click the `Include In Project` menu item
-
-The window should look like this:
-
-![includeinproject](https://user-images.githubusercontent.com/32276163/45234663-486b7400-b28b-11e8-8bc9-f6b2dea7009f.png)
-
-Verify the solution builds successfully.
-
-#### Update file properties
-When adding existing files to a project, the `Copy to Output Directory` File property is set to `Do not copy` by default. Update all of the specified File properties to ensure those files are copied to the build directory.
-
-* Hold the `SHIFT` key and left-click all files within the `Resources` folder and `LogConfig.xml` (6 files)
-* Within the Properties window, change the `Copy to Output Directory` File property to `Copy always`
-* The File property is globally updated for all selected files
-
-The window should look like this:
-
-![copyalways](https://user-images.githubusercontent.com/32276163/45234916-0a228480-b28c-11e8-82ad-ce22351e9dbf.png)
-
-
-Verify the solution builds successfully and the required files are copied correctly (assume **debug** build)
-
-```
-|-- bin
-    |-- Debug
-        |-- Resources
-            |-- EDRM-Sample1.jpg
-            |-- EDRM-Sample2.pdf
-            |-- EDRM-Sample3.doc
-            |-- EDRM-Sample4.xlsx
-            |-- EDRM-Sample5.pptx
-        |-- LogConfig.xml
-```
-
-#### Update App.config
-The [Json.NET](https://www.newtonsoft.com/json) is a popular JSON library that has been heavily used for many years. In fact, this library is so popular that [Microsoft's own documentation](https://docs.microsoft.com/en-us/dotnet/api/system.web.script.serialization.javascriptserializer?view=netframework-4.7.2) recommends using it for serialization and deserialization functionality. Because this library is prone to severe compatibility issues, Relativity strongly recommends defining a [binding redirect for Json.NET](#binding-redirect-for-json.net).
-
-Copy and paste the source below into the `App.config` file.
-
-<details><summary>View source code</summary>
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-    <startup> 
-        <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.6.2" />
-    </startup>
-  <runtime>
-    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
-      <dependentAssembly>
-        <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
-        <bindingRedirect oldVersion="0.0.0.0-10.0.0.0" newVersion="6.0.0.0" />
-      </dependentAssembly>
-    </assemblyBinding>
-  </runtime>
-</configuration>
-```
-
-</details>
-
-### Object model
-The next several sections highlight the TAPI object model and incrementally configure and construct all required objects.
-
-* [Object model overview](#object-model-overview)
-* [Replace Program class](#replace-program-class)
-* [Cancellation](#cancellation)
-* [Initialize GlobalSettings](#initialize-globalsettings)
-* [Create ClientConfiguration Object](#create-clientconfiguration-object)
-* [Create ITransferLog Object](#create-itransferlog-object)
-* [Create IRelativityTransferHost Object](#create-irelativitytransferhost-object)
-* [Create ITransferClient Object](#create-itransferclient-object)
-* [Subscribe to transfer events](#subscribe-to-transfer-events)
-
-#### Object model overview
-The source code that follows provides an overview of the TAPI object model in 1 continuous block. This will provide insight into the structure and flow of typical upload and download transfer requests:
-
-<details><summary>View source code</summary>
-
-```csharp
-// Initialize the global settings when the application is first started.
-GlobalSettings.Instance.StatisticsLogEnabled = true;
-GlobalSettings.Instance.StatisticsLogIntervalSeconds = .5;
-GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 10;
-
-// Transfer clients support a wide range of configurable settings.
-ClientConfiguration configuration = new ClientConfiguration
-{
-    FileNotFoundErrorsRetry = false,
-    PreserveDates = true
-};
-
-// Define the Relativity connection parameters.
-RelativityConnectionInfo connectionInfo = new RelativityConnectionInfo(url, credential, workspaceId);
-
-// Virtually any method, async especially, can throw a TransferException!
-try
-{
-    // Let TAPI construct the best transfer client for the specified Relativity instance and workspace.
-    using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
-    using (ITransferLog transferLog = new RelativityTransferLog())
-    using (IRelativityTransferHost host = new RelativityTransferHost(connectionInfo, log))
-    using (ITransferClient client = await host.CreateClientAsync(configuration, cancellationTokenSource.Token).ConfigureAwait(false))
-    {
-        // Supply the token to all async methods
-        CancellationToken token = cancellationTokenSource.Token;
-
-        // Regardless of transfer client, the approach below remains the same.
-
-        // The transfer context object provides several events and supplied to the transfer requests below.
-        TransferContext context = new TransferContext();
-        context.TransferPathIssue += (sender, args) => { };
-        context.TransferRequest += (sender, args) => { };
-        context.TransferPathProgress += (sender, args) => { };
-        context.TransferJobRetry += (sender, args) => { };
-        context.TransferStatistics += (sender, args) => { };
-        
-        // Get the same workspace specified above to get the default file share.
-        Workspace workspace = await client.GetWorkspaceAsync(token).ConfigureAwait(false);
-        RelativityFileShare fileShare = workspace.DefaultFileShare;
-
-        // Define a single path object for upload.
-        TransferPath localSourcePath = new TransferPath
-        {
-            PathAttributes = TransferPathAttributes.File,
-            SourcePath = @"C:\test.txt",
-            TargetPath = fileShare.Url
-        };
-
-        // Add all upload transfer path objects to the request.
-        TransferRequest uploadRequest = TransferRequest.ForUpload(localSourcePath, context);
-        
-        // Submit the request and await completion.
-        ITransferResult uploadResult = await client.TransferAsync(uploadRequest, token).ConfigureAwait(false);
-
-        if (uploadResult.Status != TransferStatus.Successful)
-        {
-            // Handle transfer failures here.
-        }
-
-        // Define a single path object for download.
-        TransferPath remoteSourcePath = new TransferPath
-        {
-            PathAttributes = TransferPathAttributes.File,
-            SourcePath = fileShare.Url + @"\test.txt",
-            TargetPath = @"C:\Temp"
-        };
-
-        // Add all download transfer path objects to the request, submit the request, and await completion.
-        TransferRequest downloadRequest = TransferRequest.ForDownload(remoteSourcePath, context);
-        ITransferResult downloadResult = await client.TransferAsync(downloadRequest, token).ConfigureAwait(false);
-
-        if (downloadResult.Status != TransferStatus.Successful)
-        {
-            // Handle transfer failures here.
-        }
-    }
-}
-catch (TransferException e)
-{
-    // Handle the exception.
-}
-```
-
-</details>
-
-#### Replace Program class
-The `Program.cs` class provides a skeleton to setup TAPI and perform Aspera transfers.
-
-Copy and paste the source below to replace the existing `Program.cs` class.
-
-<details><summary>View source code</summary>
-
-```csharp
-namespace Relativity.Transfer.Sample
-{
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-
-    public class Program
-    {
-        // TODO: Update these parameters.
-        private const string RelativityUrl = "https://relativity_host.com/Relativity";
-        private const string RelativityUserName = "jsmith@example.com";
-        private const string RelativityPassword = "UnbreakableP@ssword777";
-        private const int WorkspaceId = 1;
-
-        public static void Main(string[] args)
-        {
-            Console2.Initialize();
-            Console2.WriteLine("Relativity Transfer Sample");
-            int exitCode = 1;
-
-            try
-            {
-                InitializeGlobalSettings();
-                Task.Run(
-                    async () =>
-                        {
-                            using (ITransferLog transferLog = CreateTransferLog())
-                            using (IRelativityTransferHost host = CreateRelativityTransferHost(transferLog))
-                            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
-                            {
-                                CancellationToken token = cancellationTokenSource.Token;
-                                await DemoAsperaTransferAsync(host, token).ConfigureAwait(false);
-                                exitCode = 0;
-                            }
-                        }).GetAwaiter().GetResult();
-            }
-            catch (TransferException e)
-            {
-                if (e.Fatal)
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "A fatal transfer failure has occurred. Error: " + e);
-                }
-                else
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "A non-fatal transfer failure has occurred. Error: " + e);
-                }
-            }
-            catch (ApplicationException e)
-            {
-                // No need to include the stacktrace.
-                Console2.WriteLine(ConsoleColor.Red, e.Message);
-            }
-            catch (Exception e)
-            {
-                Console2.WriteLine(ConsoleColor.Red, "An unexpected error has occurred. Error: " + e);
-            }
-            finally
-            {
-                Console2.WriteTerminateLine(exitCode);
-                Environment.Exit(exitCode);
-            }
-        }
-
-        private static void InitializeGlobalSettings()
-        {
-        }
-
-        private static ITransferLog CreateTransferLog()
-        {
-            return null;
-        }
-
-        private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog log)
-        {
-            return null;
-        }
-
-        private static async Task<ITransferClient> CreateClientAsync(IRelativityTransferHost host, ClientConfiguration configuration, CancellationToken token)
-        {
-            await Task.Delay(1);
-            return null;
-        }
-
-        private static TransferContext CreateTransferContext()
-        {
-            return null;
-        }
-
-        private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
-        {
-            return null;
-        }
-
-        private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTransferHost host, int number, CancellationToken token)
-        {
-            await Task.Delay(1);
-            return null;
-        }
-
-        private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(ITransferClient client, string uploadTargetPath, CancellationToken token)
-        {
-            await Task.Delay(1);
-            return null;
-        }
-
-        private static async Task DemoAsperaTransferAsync(IRelativityTransferHost host, CancellationToken token)
-        {
-            await Task.CompletedTask.ConfigureAwait(false);
-        }
-
-        private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToken token)
-        {
-            await Task.Delay(1);
-        }
-
-        private static void DisplayFileShare(RelativityFileShare fileShare)
-        {
-            Console2.WriteLine("Artifact ID: {0}", fileShare.ArtifactId);
-            Console2.WriteLine("Name: {0}", fileShare.Name);
-            Console2.WriteLine("UNC Path: {0}", fileShare.Url);
-            Console2.WriteLine("Cloud Instance: {0}", fileShare.CloudInstance);
-
-            // RelativityOne specific properties.
-            Console2.WriteLine("Number: {0}", fileShare.Number);
-            Console2.WriteLine("Tenant ID: {0}", fileShare.TenantId);
-        }
-
-        private static void DisplayTransferResult(ITransferResult result)
-        {
-            // The original request can be accessed within the transfer result.
-            Console2.WriteLine();
-            Console2.WriteLine("Transfer Summary");
-            Console2.WriteLine("Name: {0}", result.Request.Name);
-            Console2.WriteLine("Direction: {0}", result.Request.Direction);
-            if (result.Status == TransferStatus.Successful || result.Status == TransferStatus.Canceled)
-            {
-                Console2.WriteLine("Result: {0}", result.Status);
-            }
-            else
-            {
-                Console2.WriteLine(ConsoleColor.Red, "Result: {0}", result.Status);
-                if (result.TransferError != null)
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "Error: {0}", result.TransferError.Message);
-                }
-                else
-                {
-                    Console2.WriteLine(ConsoleColor.Red, "Error: Check the error log for more details.");
-                }
-            }
-
-            // Display useful transfer metrics.
-            Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", result.Elapsed);
-            Console2.WriteLine("Total files: Files: {0:n0}", result.TotalTransferredFiles);
-            Console2.WriteLine("Total bytes: Files: {0:n0}", result.TotalTransferredBytes);
-            Console2.WriteLine("Total files not found: {0:n0}", result.TotalFilesNotFound);
-            Console2.WriteLine("Total bad path errors: {0:n0}", result.TotalBadPathErrors);
-            Console2.WriteLine("Data rate: {0:#.##} Mbps", result.TransferRateMbps);
-            Console2.WriteLine("Retry count: {0}", result.RetryCount);
-        }
-
-        private static string GetUniqueRemoteTargetPath(RelativityFileShare fileShare)
-        {
-            string uniqueFolder = Guid.NewGuid().ToString();
-            string path = string.Join("\\", fileShare.Url.TrimEnd('\\'), "_Relativity-Transfer-Sample", uniqueFolder);
-            return path;
-        }
-    }
-}
-```
-</details>
-
----
-
-Ensure the following 4 fields found at the top of the class are updated with valid parameters:
-
+Ensure the following 5 settings found in app.config are updated with valid values:
+* TransferMode
 * RelativityUrl
 * RelativityUserName
 * RelativityPassword
 * WorkspaceId
 
----
+TransferMode valid values are "Aspera" and "Fileshare". Transfer will be executed in specified mode.
 
-Verify the solution builds successfully. Even though the application performs no real work yet, debug to ensure the application terminates with a zero exit code.
+The next sections discuss Aspera and file share TAPI features.
+
+* [Object model](#object-model)
+* [Demo](#demo)
+
+### Object model
+The next several sections highlight the TAPI object model.
+
+* [Cancellation](#cancellation)
+* [InitializeGlobalSettings](#initializeglobalsettings)
+* [CreateTransferLog](#createtransferlog)
+* [CreateRelativityTransferHost](#createrelativitytransferhost)
+* [CreateTransferClient](#createtransferclient)
+* [Subscribe to transfer events](#subscribe-to-transfer-events)
 
 #### Cancellation
 The use of cancellation token is strongly recommended with potentially long-running transfer operations. The sample wraps a `CancellationTokenSource` object within a using block, assigns the `CancellationToken` object to a variable, and passes the variable to all asynchronous methods.
@@ -522,181 +102,23 @@ using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSo
 }
 ```
 
-#### Initialize GlobalSettings
+#### InitializeGlobalSettings
 The `InitializeGlobalSettings()` method is responsible for configuring the [GlobalSettings](#globalsettings).
 
-Find the `InitializeGlobalSettings()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static void InitializeGlobalSettings()
-{
-    Console2.WriteStartHeader("Initialize GlobalSettings");
-
-    // A meaningful application name is encoded within monitoring data.
-    GlobalSettings.Instance.ApplicationName = "sample-app";
-
-    // Configure for a console-based application.
-    GlobalSettings.Instance.CommandLineModeEnabled = true;
-    Console2.WriteLine("Configured console settings.");
-
-    // This will automatically write real-time entries into the transfer log.
-    GlobalSettings.Instance.StatisticsLogEnabled = true;
-    GlobalSettings.Instance.StatisticsLogIntervalSeconds = .5;
-    Console2.WriteLine("Configured statistics settings.");
-
-    // Limit the max target rate and throw exceptions when invalid paths are specified.
-    GlobalSettings.Instance.MaxAllowedTargetDataRateMbps = 10;
-    Console2.WriteLine("Configured miscellaneous settings.");
-    Console2.WriteEndHeader();
-}
-```
-</details>
-
-#### Create ITransferLog object
+#### CreateTransferLog
 The `CreateTransferLog()` method uses a [Relativity Logging](https://platform.relativity.com/9.6/Content/Logging/Logging.htm) XML configuration file to create the [ITransferLog](#logging) instance used to log transfer details, warnings, and errors. It's entirely possible for API users to create an `ITransferLog` derived class object and use virtually any logging framework; however, the `RelativityTransferLog` class object is provided to simplify integration with Relativity Logging. The `LogConfig.xml` is designed to write all entries to a rolling log file within the user profile `%TEMP%` directory and a local [SEQ](https://getseq.net) log server.
 
-Find the `CreateTransferLog()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static ITransferLog CreateTransferLog()
-{
-    // This is a standard set of options for any logger.
-    Logging.LoggerOptions loggerOptions = new Logging.LoggerOptions
-    {
-        Application = "F456D022-5F91-42A5-B00F-5609AED8C9EF",
-        ConfigurationFileLocation = Path.Combine(Environment.CurrentDirectory, "LogConfig.xml"),
-        System = "Data-Transfer",
-        SubSystem = "Sample-Cli"
-    };
-
-    // Configure the optional SEQ sink.
-    loggerOptions.AddSinkParameter(Logging.Configuration.SeqSinkConfig.ServerUrlSinkParameterKey, new Uri("http://localhost:5341"));
-    Relativity.Logging.ILog logger = Logging.Factory.LogFactory.GetLogger(loggerOptions);
-    return new RelativityTransferLog(logger, true);
-}
-```
-</details>
-
-#### Create IRelativityTransferHost object
+#### CreateRelativityTransferHost
 The `CreateRelativityTransferHost()` method defines a [RelativityConnectionInfo](#relativityconnectioninfo) object to specify the Relativity URL, credentials, and optional workspace artifact ID. The URL and credentials are supplied to all HTTP/REST endpoints and TAPI supports both basic authentication and OAuth2 bearer tokens. For more information about Relativity OAuth2 clients, see [Relativity Documentation Site]("https://help.relativity.com/RelativityOne/Content/Relativity/Authentication/OAuth2_clients.htm"). Once constructed, the `RelativityConnectionInfo` object is passed to the [RelativityTransferHost](#relativitytransferhost) constructor.
 
-Find the `CreateRelativityTransferHost()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static IRelativityTransferHost CreateRelativityTransferHost(ITransferLog log)
-{
-    if (string.Compare(RelativityUrl, "https://relativity_host.com/Relativity", StringComparison.OrdinalIgnoreCase) == 0 ||
-        string.Compare(RelativityUserName, "jsmith@example.com", StringComparison.OrdinalIgnoreCase) == 0 ||
-        string.Compare(RelativityPassword, "UnbreakableP@ssword777", StringComparison.OrdinalIgnoreCase) == 0 ||
-        WorkspaceId == 1)
-    {
-        throw new ApplicationException("You must update all Relativity connection parameters in order to run this application.");
-    }
-
-    Uri url = new Uri(RelativityUrl);
-    IHttpCredential credential = new BasicAuthenticationCredential(RelativityUserName, RelativityPassword);
-    RelativityConnectionInfo connectionInfo = new RelativityConnectionInfo(url, credential, WorkspaceId);
-    return new RelativityTransferHost(connectionInfo, log);
-}
-```
-</details>
-
-#### Create ITransferClient object
-If a workspace artifact is specified within the `RelativityConnectionInfo` object, the `CreateClientAsync()` method is designed to query the workspace, determine which transfer clients are supported (Aspera or file share), and choose the optimal client. *If* a client is specified within the `ClientConfiguration` object, the `CreateClient()` method explicitly instructs TAPI to construct a certain type of client. There may be circumstances where direct access to the file share is guaranteed and the FileShareClient will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
-
-Find the `CreateClientAsync()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task<ITransferClient> CreateClientAsync(IRelativityTransferHost host, ClientConfiguration configuration, CancellationToken token)
-{
-    Console2.WriteStartHeader("Create Client");
-    ITransferClient client;
-    if (configuration.Client == WellKnownTransferClient.Unassigned)
-    {
-        // The CreateClientAsync method chooses the best client at runtime.
-        Console2.WriteLine("TAPI is choosing the best transfer client...");
-        client = await host.CreateClientAsync(configuration, token).ConfigureAwait(false);
-    }
-    else
-    {
-        // The CreateClient method creates the specified client.
-        Console2.WriteLine("The API caller specified the {0} transfer client.", configuration.Client);
-        client = host.CreateClient(configuration);
-    }
-
-    if (client == null)
-    {
-        throw new InvalidOperationException("This operation cannot be performed because a transfer client could not be created.");
-    }
-
-    Console2.WriteLine("TAPI created the {0} transfer client.", client.DisplayName);
-    Console2.WriteEndHeader();
-    return client;
-}
-```
-</details>
+#### CreateTransferClient
+If a workspace artifact is specified within the `RelativityConnectionInfo` object, the `CreateClientAsync()` method is designed to query the workspace, determine which transfer clients are supported (Aspera or file share), and choose the optimal client. *If* a client is specified within the `ClientConfiguration` object, the `CreateClient()` method explicitly instructs TAPI to construct a certain type of client. There may be circumstances where direct access to the file share is guaranteed and the 
+Client will always be your best transfer option. For more information, see [Dynamic Transfer Client](#dynamic-transfer-client) and [ITransferClient](#itransferclient).
 
 #### Subscribe to transfer events
 Since transfer events are used for both upload and download operations, the demo wraps this within the `CreateTransferContext()` method to construct the [TransferContext](#transfer-events-and-statistics) object and write event details to the console. This object is used to decouple the event logic of the transfer - for example, progress and  statistics - from the host and the client.
 
-Find the `CreateTransferContext()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static TransferContext CreateTransferContext()
-{
-    // The context object is used to decouple operations such as progress from other TAPI objects.
-    TransferContext context = new TransferContext { StatisticsRateSeconds = 0.5, StatisticsEnabled = true };
-    context.TransferPathIssue += (sender, args) =>
-        {
-            Console2.WriteLine("Event=TransferPathIssue, Attributes={0}", args.Issue.Attributes);
-        };
-
-    context.TransferRequest += (sender, args) =>
-        {
-            Console2.WriteLine("Event=TransferRequest, Status={0}", args.Status);
-        };
-
-    context.TransferPathProgress += (sender, args) =>
-        {
-            Console2.WriteLine(
-                "Event=TransferPathProgress, Filename={0}, Status={1}",
-                Path.GetFileName(args.Path.SourcePath),
-                args.Status);
-        };
-
-    context.TransferJobRetry += (sender, args) =>
-        {
-            Console2.WriteLine("Event=TransferJobRetry, Retry={0}", args.Count);
-        };
-
-    context.TransferStatistics += (sender, args) =>
-        {
-            // Progress has already factored in file-level vs byte-level progress.
-            Console2.WriteLine(
-                "Event=TransferStatistics, Progress: {0:00.00}%, Transfer rate: {1:00.00} Mbps, Remaining: {2:hh\\:mm\\:ss}",
-                args.Statistics.Progress,
-                args.Statistics.TransferRateMbps,
-                args.Statistics.RemainingTime);
-        };
-
-    return context;
-}
-```
-</details>
-
-Verify the solution builds successfully. Next, Start or debug the project and ensure a transfer client object is constructed and the application terminates with a zero exit code.
-
-### Aspera demo
+### Demo
 Real-world applications typically involve large or even massive datasets that not only require better transfer request management but provide real-time data rate, progress, and time remaining to their users.
 
 For first time executions, Windows may popup a `Windows Defender` window like the one below. If this is presented, click the "Allow access" button.
@@ -705,7 +127,7 @@ For first time executions, Windows may popup a `Windows Defender` window like th
 
 For this demo, the approach is as follows:
 
-* Create an Aspera specific TAPI client
+* Create an Aspera or file share specific TAPI client
 * Specify a target file share
 * Create an upload transfer job request and job
 * Search for the local dataset and add the local transfer paths to the job
@@ -714,83 +136,17 @@ For this demo, the approach is as follows:
 * Add the remote transfer paths to the job
 * Change the data rate, await completion, and display the results
 
-#### Create AsperaClientConfiguration object
-The `CreateAsperaClientConfiguration()` method is responsible for creating and configuring the [AsperaClientConfiguration](#asperaclientconfiguration) object. This object inherits all of the configurable properties found within [ClientConfiguration](#clientconfiguration), adds numerous Aspera specific transfer properties, and assigns `Aspera` to the the `Client` property. This value is later evaluated by the `CreateClientAsync()` method to construct the specified TAPI client.
-
-Find the `CreateAsperaClientConfiguration()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static Relativity.Transfer.Aspera.AsperaClientConfiguration CreateAsperaClientConfiguration()
-{
-    // Each transfer client can provide a specialized The specialized configuration object provides numerous options to customize the transfer.
-    return new Relativity.Transfer.Aspera.AsperaClientConfiguration
-    {
-        // Common properties
-        BadPathErrorsRetry = false,
-        FileNotFoundErrorsRetry = false,
-        MaxHttpRetryAttempts = 2,
-        PreserveDates = true,
-        TargetDataRateMbps = 5,
-
-        // Aspera specific properties
-        EncryptionCipher = "AES_256",
-        OverwritePolicy = "ALWAYS",
-        Policy = "FAIR",
-    };
-}
-```
-</details>
+#### Create ClientConfiguration object
+The `CreateClientConfiguration()` method is responsible for creating and configuring the [ClientConfiguration](#clientconfiguration) object. This object inherits all of the configurable properties found within [ClientConfiguration](#clientconfiguration), adds numerous Aspera specific transfer properties if Aspera client selected, and assigns `Aspera` or `Fileshare` to the the `Client` property. This value is later evaluated by the `CreateClientAsync()` method to construct the specified TAPI client.
 
 #### Search for specific file share
 Using a workspace to drive the selected file share is convenient but doesn't meet all workflow requirements. For example, consider a data migration application to move files from on-premise to RelativityOne. In this scenario, the target workspace may not even exist; however, the migration operator knows precisely which file share should be used. For scenarios like these, the [File Storage Search](#file-storage-search) API is provided.
 
-***Note:**  You must be an admin to retrieve file shares from the instance. See [Targeting File Shares](#targeting-file-shares) for more details.*
-
-Find the `GetFileShareAsync()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task<RelativityFileShare> GetFileShareAsync(IRelativityTransferHost host, int number, CancellationToken token)
-{
-    Console2.WriteStartHeader("Get Specified File Share");
-    IFileStorageSearch fileStorageSearch = host.CreateFileStorageSearch();
-
-    // Admin rights are required but this allows searching for all possible file shares within the instance.
-    FileStorageSearchContext context = new FileStorageSearchContext { WorkspaceId = Workspace.AdminWorkspaceId };
-    FileStorageSearchResults results = await fileStorageSearch.SearchAsync(context, token).ConfigureAwait(false);
-
-    // Specify the cloud-based logical file share number - or just the 1st file share when all else fails.
-    RelativityFileShare fileShare = results.GetRelativityFileShare(number) ?? results.FileShares.FirstOrDefault();
-    if (fileShare == null)
-    {
-        throw new InvalidOperationException("This operation cannot be performed because there are no file shares available.");
-    }
-
-    DisplayFileShare(fileShare);
-    Console2.WriteEndHeader();
-    return fileShare;
-}
-```
-</details>
+***Note:**  You must be an admin to retrieve file shares from the instance. See [Targeting file shares](#targeting-file-shares) for more details.*
 
 ***Note:**  The `GetRelativityFileShare()` method supports retrieving file shares by artifact, UNC path, logical number, and name.*
 
 Once the file share is retrieved by the `GetFileShareAsync()` method, the object is simply assigned to the `TargetFileShare` property found within the `ClientConfiguration` object.
-
-```csharp
-// Search for the first logical file share.
-const int LogicalFileShareNumber = 1;
-RelativityFileShare fileShare = await GetFileShareAsync(host, LogicalFileShareNumber, token).ConfigureAwait(false);
-
-// Configure an Aspera specific transfer.
-Relativity.Transfer.Aspera.AsperaClientConfiguration configuration = CreateAsperaClientConfiguration();
-
-// Assigning the file share bypasses auto-configuration that will normally use the default workspace repository.
-configuration.TargetFileShare = fileShare;
-```
 
 #### Search local source paths
 Data transfer workflows often involve large datasets stored on network servers or other enterprise storage devices. In many cases, the data transfer operator would like to transfer all of the files contained within a specified path. It's achieved with enumerators, created with `EnumerationBuilder` class.
@@ -801,198 +157,16 @@ Enumerators supports features like:
 
 For large datasets (IE 1M+), it's recommended to serialize the results to disk and batching the results in smaller chunks. Since the test dataset is small, the enumeration option is used. Enumeration returns the `IEnumerable` of `TransferPath` objects and uses the lambda expression to report useful statistics.
 
-Find the `SearchLocalSourcePathsAsync()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task<IList<TransferPath>> SearchLocalSourcePathsAsync(CancellationToken token)
-{
-    Console2.WriteStartHeader("Search Paths");
-    string searchLocalPath = Path.Combine(Environment.CurrentDirectory, "Resources");
-
-    var paths = new List<TransferPath>();
-    long totalFileCount = 0;
-    long totalByteCount = 0;
-    //const bool Local = true;
-
-    var logger = CreateTransferLog();
-
-    var sourceNode = NodeParser.Node()
-        .WithContext(NullNodeContext.Instance)
-        .WithPath(searchLocalPath)
-        .Parse<IDirectory>();
-
-    INode[] sourceNodes = { sourceNode };
-    var pathEnumerator = EnumerationBuilder.ForUpload(logger, Guid.NewGuid())
-        .StartFrom(sourceNodes)
-        .WithStatistics(new SynchronousHandler<EnumerationStatistic>(
-            statistic =>
-            {
-                totalFileCount = statistic.TotalFiles;
-                totalByteCount = statistic.TotalBytes;
-            }))
-        .Create();
-
-
-    var stopWatch = new Stopwatch();
-    stopWatch.Start();
-    await Task.Run(() =>
-    {
-        paths.AddRange(pathEnumerator.LazyEnumerate(token)
-            .Select(node => new TransferPath(node.AbsolutePath)));
-    }, token).ConfigureAwait(false);
-
-    stopWatch.Stop();
-
-    Console2.WriteLine("Local Paths: {0}", sourceNode);
-    Console2.WriteLine("Elapsed time: {0:hh\\:mm\\:ss}", stopWatch.Elapsed);
-    Console2.WriteLine("Total files: {0:n0}", totalFileCount);
-    Console2.WriteLine("Total bytes: {0:n0}", totalByteCount);
-    Console2.WriteEndHeader();
-    return paths;
-}
-```
-</details>
-
-#### Replace DemoAsperaTransferAsync method
-Find the `DemoAsperaTransferAsync()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task DemoAsperaTransferAsync(IRelativityTransferHost host, CancellationToken token)
-{
-    // Search for the first logical file share.
-    const int LogicalFileShareNumber = 1;
-    RelativityFileShare fileShare = await GetFileShareAsync(host, LogicalFileShareNumber, token).ConfigureAwait(false);
-
-    // Configure an Aspera specific transfer.
-    Relativity.Transfer.Aspera.AsperaClientConfiguration configuration = CreateAsperaClientConfiguration();
-
-    // Assigning the file share bypasses auto-configuration that will normally use the default workspace repository.
-    configuration.TargetFileShare = fileShare;
-    using (ITransferClient client = await CreateClientAsync(host, configuration, token).ConfigureAwait(false))
-    using (AutoDeleteDirectory directory = new AutoDeleteDirectory())
-    {
-        // Create a job-based upload transfer request.
-        Console2.WriteStartHeader("Aspera Transfer - Upload");
-        string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);
-        IList<TransferPath> localSourcePaths = await SearchLocalSourcePathsAsync(client, uploadTargetPath, token).ConfigureAwait(false);
-        TransferContext context = CreateTransferContext();
-        TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
-        uploadJobRequest.Application = "Github Sample";
-        uploadJobRequest.Name = "Aspera Upload Sample";
-
-        // Create a transfer job to upload the local sample dataset to the target remote path.
-        using (ITransferJob job = await client.CreateJobAsync(uploadJobRequest, token).ConfigureAwait(false))
-        {
-            Console2.WriteLine("Aspera upload started.");
-
-            // Paths added to the async job are transferred immediately.
-            await job.AddPathsAsync(localSourcePaths, token).ConfigureAwait(false);
-
-            // Await completion of the job.
-            ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-            Console2.WriteLine("Aspera upload completed.");
-            DisplayTransferResult(result);
-            Console2.WriteEndHeader();
-        }
-                
-        // Create a job-based download transfer request.
-        Console2.WriteStartHeader("Aspera Transfer - Download");
-        string downloadTargetPath = directory.Path;
-        TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
-        downloadJobRequest.Application = "Github Sample";
-        downloadJobRequest.Name = "Aspera Download Sample";
-        Console2.WriteLine("Aspera download started.");
-
-        // Create a transfer job to download the sample dataset to the target local path.
-        using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token).ConfigureAwait(false))
-        {
-            IEnumerable<TransferPath> remotePaths = localSourcePaths.Select(localPath => new TransferPath
-            {
-                SourcePath = uploadTargetPath + "\\" + Path.GetFileName(localPath.SourcePath),
-                PathAttributes = TransferPathAttributes.File,
-                TargetPath = downloadTargetPath
-            });
-                    
-            await job.AddPathsAsync(remotePaths, token).ConfigureAwait(false);
-            await ChangeDataRateAsync(job, token).ConfigureAwait(false);
-
-            // Await completion of the job.
-            ITransferResult result = await job.CompleteAsync(token).ConfigureAwait(false);
-            Console2.WriteLine("Aspera download completed.");
-            DisplayTransferResult(result);
-            Console2.WriteEndHeader();
-        }
-    }
-}
-```
-</details>
-
 #### Create job TransferRequest objects
 When defining a `TransferRequest` object to support transfer jobs, `TransferPath` objects are *never* added to the request as this responsibility is handled by the transfer job. Among the available overloads, the `ForUploadJob()` and `ForDownloadJob()` methods accept a target path and `TransferContext` object.
-
-```csharp
-// Create a job-based upload transfer request.
-Console2.WriteStartHeader("Aspera Transfer - Upload");
-string uploadTargetPath = GetUniqueRemoteTargetPath(fileShare);                                
-TransferContext context = CreateTransferContext();
-TransferRequest uploadJobRequest = TransferRequest.ForUploadJob(uploadTargetPath, context);
-```
-
-```csharp
-// Create a job-based download transfer request.
-Console2.WriteStartHeader("Aspera Transfer - Download");
-string downloadTargetPath = directory.Path;
-TransferRequest downloadJobRequest = TransferRequest.ForDownloadJob(downloadTargetPath, context);
-```
 
 #### Transfer jobs
 The transfer client is used to construct a new transfer job where `TransferPath` objects can be added at any point in time. It's understood that files are *immediately* transferred in the order that they've been added to the job. The `ITransferJob` instance is wrapped in a using block so that all resources are properly disposed.
 
-```csharp
-// Create a transfer job to upload the local sample dataset to the target remote path.
-using (ITransferJob job = await client.CreateJobAsync(uploadJobRequest, token).ConfigureAwait(false))
-{
-    ...
-
-    // Paths added to the async job are transferred immediately.
-    await job.AddPathsAsync(localSourcePaths, token).ConfigureAwait(false);
-}
-```
-
-```csharp
-// Create a transfer job to download the sample dataset to the target local path.
-using (ITransferJob job = await client.CreateJobAsync(downloadJobRequest, token).ConfigureAwait(false))
-{
-    ...
-    await job.AddPathsAsync(remotePaths, token).ConfigureAwait(false);
-}
-```
-
 #### Change the data rate
 One of the other advantages with using a job is that it provides the API caller an object to perform job-specific operations like increasing or decreasing the data rate. Because not all TAPI client support this feature, a convenient `IsDataRateChangeSupported` property is provided by the `ITransferJob` object.
 
-Find the `ChangeDataRateAsync()` empty method in the `Program` class and replace with the following:
-
-<details><summary>View source code</summary>
-
-```csharp
-private static async Task ChangeDataRateAsync(ITransferJob job, CancellationToken token)
-{
-    if (job.IsDataRateChangeSupported)
-    {
-        Console2.WriteLine("Changing the transfer data rate...");
-        await job.ChangeDataRateAsync(0, 10, token).ConfigureAwait(false);
-        Console2.WriteLine("Changed the transfer data rate.");
-    }
-}
-```
-</details>
-
-#### Aspera start or debug
+#### Start or debug
 Start or debug the project and ensure 5 files are successfully uploaded/downloaded and the application terminates with a zero exit code.
 
 The following sections provide detailed reference for the Transfer API operations illustrated by the sample program above.
@@ -1041,7 +215,7 @@ The first thing you must do is construct a `RelativityConnectionInfo` object, wh
 | Credential      | The Relativity credential used to authenticate HTTP/REST API calls.                                                            |
 | WorkspaceId     | The workspace artifact identifier used to auto-configure the request with file share, credential, and other transfer settings. |
 
-***Note:**  The workspace artifact identifier can be set to `Workspace.AdminWorkspaceId` if the workspace is unknown or the transfer is manually configured. See [Admin Workspace](#admin-workspace) and [Targeting File Shares](#targeting-file-shares) for more details.*
+***Note:**  The workspace artifact identifier can be set to `Workspace.AdminWorkspaceId` if the workspace is unknown or the transfer is manually configured. See [Admin Workspace](#admin-workspace) and [Targeting file shares](#targeting-file-shares) for more details.*
 
 The following example uses basic username/password credentials.
 
@@ -1133,8 +307,8 @@ The Aspera transfer engine defines a large number of properties to customize the
 | ------------------------------| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
 | AccountUserName               | The optional Aspera account username. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.           			                                                                                                                                                        | null                       |
 | AccountPassword               | The optional Aspera account password. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.           			                                                                                                                                                        | null                       |
-| DocRootLevels                 | The number of levels the Aspera doc root folder is relative to the File share Resource Server UNC path. This should never be changed unless the server configuration has deviated from the default.                          			                                                                                                                                                    | 1                          |
-| DocRootLevels                 | The number of levels the Aspera doc root folder is relative to the File share Resource Server UNC path. This should never be changed unless the server configuration has deviated from the default.                          			                                                                                                                                                    | 1                          |
+| DocRootLevels                 | The number of levels the Aspera doc root folder is relative to the file share resource server UNC path. This should never be changed unless the server configuration has deviated from the default.                          			                                                                                                                                                    | 1                          |
+| DocRootLevels                 | The number of levels the Aspera doc root folder is relative to the file share resource server UNC path. This should never be changed unless the server configuration has deviated from the default.                          			                                                                                                                                                    | 1                          |
 | HealthCheckLogMaxLine         | The maximum number of lines to retrieve from the Aspera transfer log when performing a diagnostic check.                                                                                                                                                                                                                                                                                  | 100                        |
 | Host                          | The optional Aspera host name. This should only be set when overriding the auto-configured credential. This is retrieved from the workspace's default file share when the client is first initialized.                   			                                                                                                                                                        | null                       |
 | CreateDirectories             | Enable or disable whether to automatically create directories when they don't already exist.                                                                                                                                  			                                                                                                                                                | true                       |
@@ -1197,7 +371,7 @@ using (ITransferClient client = await host.CreateClientAsync(new ClientConfigura
 ### ITransferClientStrategy
 When using the dynamic transfer client, a strategy design pattern is used to determine the order in which clients are checked for compatibility. Out of the box, the **default strategy** is as follows:
 
-* FileShare
+* File share
 * Aspera
 
 The signature for this interface is as follows:
@@ -1692,7 +866,7 @@ var enumeration = EnumerationBuilder
 TAPI provides the following implementations of `INodeFilter` - you can define your own.
 * `AspxExtensionFilter` - filters out all files with `.aspx` extension (to prevent errors of Aspera transfers),
 * `NoReadAccessFileNodeFilter` - checks user's permission against a file (can slow down enumeration significantly),
-* `PathLengthFilter` - finds paths longer than Aspera and Fileshare support,
+* `PathLengthFilter` - finds paths longer than Aspera and file share support,
 * `R1PathSizeFilter` - finds paths longer than RelativityOne supports.
 
 #### Statistics
@@ -1977,7 +1151,7 @@ If TAPI determines that a transfer error can be retried, it will attempt to retr
 | Setting Name          | Description |
 | --------------------- | -------------------------------------------------------------------------------------------------------------- |
 | BadPathErrorsRetry    | When TAPI encounters a bad path error from Aspera only, it will use this setting to determine whether it should retry. TAPI has checks in place to prevent paths from being passed in that are invalid or otherwise not able to be transferred, so this error has only been observed during times of high load when Aspera may not be throwing the correct error code. |
-| PermissionErrorsRetry | When TAPI encounters a permission error when transferring using Aspera, Web or File share, it will use this setting to determine whether it should retry. Similar to bad path errors, this will typically be thrown during times of high load, when Aspera is not necessarily throwing the correct error code. |
+| PermissionErrorsRetry | When TAPI encounters a permission error when transferring using Aspera, Web or file share, it will use this setting to determine whether it should retry. Similar to bad path errors, this will typically be thrown during times of high load, when Aspera is not necessarily throwing the correct error code. |
 
 The `ITransferStatistics` object has properties that indicate how many times the above errors have been encountered and retried. This object has a count of TotalBadPathErrors and TotalFilePermissionsErrors, which will be incremented every time these errors are encountered.
 
