@@ -9,7 +9,8 @@ namespace Relativity.Transfer.Sample
 	using System;
 
 	using Relativity.Logging;
-	using Relativity.Transfer;
+    using Relativity.Logging.Factory;
+    using Relativity.Transfer;
 
 	/// <summary>
 	/// Represents a thread-safe class object to write debug, information, warning, and error logs using Relativity Logging.
@@ -41,7 +42,7 @@ namespace Relativity.Transfer.Sample
 		{
 			if (Log.Logger == null)
 			{
-				this.logger = Relativity.Logging.Factory.LogFactory.GetLogger(
+				this.logger = LogFactory.GetLogger(
 					new LoggerOptions
 					{
 						System = "TAPI",
