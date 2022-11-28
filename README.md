@@ -1,3 +1,24 @@
+*NOTE*: Relativity.Transfer.Client version 7.4.10 (and below) will stop functioning on Feb 28th, 2023 due to migration of data transfer related products to cloud based solutions. The new version of Relativity.Transfer.SDK will be available on Nov 30th 2022.  
+
+**Since it is going to be a breaking change you will need to update your code and integrate with the new the new Relativity.Transfer.SDK version – 1.0.0.**
+
+November 30th 2022 we will release first version including:
+ * Upload a single file or a directory to the RelativityOne fileshare 
+ * Track data transfer progress 
+ * Recover transfer from previous failure or interruption 
+ * Real time information about succeeded, failed and skipped items, including exact path and the reason of error 
+ * Cross platform compatibility - you can transfer data from Windows, Linux and macOS 
+ * Secured transfer using HTTPS, only single TCP 443 is required 
+
+Q1 2023 you can expect additional functionalities like: 
+ * Download a single file or a directory to the RelativityOne fileshare 
+ * File retry policy 
+ * File exclusion policy  
+ * File override policy  
+ * File custom attributes policy (used to set custom metadata on target file) 
+
+*Link to a specific NuGet.org package to come soon.*
+
 # Relativity Transfer API for .NET
 You can use the Transfer API (TAPI) to build application components that connect to Relativity and stream data from external sources into Relativity storage using different transfer protocols, for example, SMB or Aspera. You can also stream data from Relativity. The API enables optimized data transfer with extensible client architecture and event model using Relativity authentication and logging. For example, you can use the Transfer API to develop an application that loads case data into Relativity for subsequent processing. Unlike the Import API, TAPI doesn't create Relativity objects associated with the data, for example, documents and RDOs.
 
