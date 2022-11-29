@@ -1,6 +1,6 @@
 *NOTE*: Relativity.Transfer.Client version 7.4.10 (and below) will stop functioning on Feb 28th, 2023 due to migration of data transfer related products to cloud based solutions. The new version of Relativity.Transfer.SDK will be available on Nov 30th 2022.  
 
-**Since it is going to be a breaking change you will need to update your code and integrate with the new Relativity.Transfer.SDK version – 1.0.0.\* **
+**Since it is going to be a breaking change you will need to update your code and integrate with the new Relativity.Transfer.SDK version – 1.0.0.\***
 
 November 30th 2022 we will release first version including:
  * Upload a single file or a directory to the RelativityOne fileshare 
