@@ -11,7 +11,7 @@ November 30th 2022 we will release first version including:
  * Secured transfer using HTTPS, only single TCP 443 is required 
 
 Q1 2023 you can expect additional functionalities like: 
- * Download a single file or a directory to the RelativityOne fileshare 
+ * Download a single file or a directory from the RelativityOne fileshare 
  * File retry policy 
  * File exclusion policy  
  * File override policy  
