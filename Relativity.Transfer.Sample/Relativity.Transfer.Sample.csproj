@@ -124,6 +124,7 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="nuget.config" />
     <None Include="packages.config" />
     <None Include="Resources\EDRM-Sample2.pdf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
