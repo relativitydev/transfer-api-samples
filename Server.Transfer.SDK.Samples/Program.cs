@@ -4,7 +4,7 @@
 // </copyright>
 // ----------------------------------------------------------------------------
 
-namespace Relativity.Transfer.Sample
+namespace Relativity.Server.Transfer.SDK.Samples
 {
     using System;
     using System.Collections.Generic;
@@ -12,7 +12,8 @@ namespace Relativity.Transfer.Sample
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using Relativity.Transfer.Sample.Exceptions;
+	using Relativity.Transfer;
+	using Relativity.Server.Transfer.SDK.Samples.Exceptions;
 
     public class Program
     {

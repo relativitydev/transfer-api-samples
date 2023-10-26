@@ -4,7 +4,7 @@
 // </copyright>
 // ----------------------------------------------------------------------------
 
-namespace Relativity.Transfer.Sample
+namespace Relativity.Server.Transfer.SDK.Samples
 {
     using System;
     using System.Collections.Generic;
@@ -19,9 +19,10 @@ namespace Relativity.Transfer.Sample
     using Relativity.Logging;
     using Relativity.Logging.Configuration;
     using Relativity.Logging.Factory;
-    using Relativity.Transfer.Enumeration;
-    using Relativity.Transfer.Sample.Enums;
-    using Relativity.Transfer.Sample.Exceptions;
+	using Relativity.Transfer;
+	using Relativity.Transfer.Enumeration;
+    using Relativity.Server.Transfer.SDK.Samples.Enums;
+    using Relativity.Server.Transfer.SDK.Samples.Exceptions;
 
     public class SampleRunner
     {

@@ -4,7 +4,7 @@
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace Relativity.Transfer.Sample
+namespace Relativity.Server.Transfer.SDK.Samples
 {
 	using System;
 

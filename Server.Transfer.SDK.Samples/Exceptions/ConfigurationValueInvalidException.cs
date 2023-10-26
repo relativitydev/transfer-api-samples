@@ -4,7 +4,7 @@
 // </copyright>
 // ----------------------------------------------------------------------------
 
-namespace Relativity.Transfer.Sample.Exceptions
+namespace Relativity.Server.Transfer.SDK.Samples.Exceptions
 {
     using System;
 

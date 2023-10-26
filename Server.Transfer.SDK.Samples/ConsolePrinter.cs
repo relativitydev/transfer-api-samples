@@ -4,14 +4,15 @@
 // </copyright>
 // ----------------------------------------------------------------------------
 
-namespace Relativity.Transfer.Sample
+namespace Relativity.Server.Transfer.SDK.Samples
 {
     using System;
     using System.Diagnostics;
 
     using Relativity.DataTransfer.Nodes;
+	using Relativity.Transfer;
 
-    public class ConsolePrinter
+	public class ConsolePrinter
     {
         public void DisplayFileShare(RelativityFileShare fileShare)
         {
