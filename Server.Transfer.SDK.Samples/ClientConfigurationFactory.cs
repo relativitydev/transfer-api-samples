@@ -4,13 +4,13 @@
 // </copyright>
 // ----------------------------------------------------------------------------
 
-namespace Relativity.Transfer.Sample
+namespace Relativity.Server.Transfer.SDK.Samples
 {
     using System.ComponentModel;
-
-    using Relativity.Transfer.Aspera;
+	using Relativity.Transfer;
+	using Relativity.Transfer.Aspera;
     using Relativity.Transfer.FileShare;
-    using Relativity.Transfer.Sample.Enums;
+    using Relativity.Server.Transfer.SDK.Samples.Enums;
 
     public class ClientConfigurationFactory
     {

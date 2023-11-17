@@ -4,7 +4,7 @@
 // </copyright>
 // ----------------------------------------------------------------------------
 
-namespace Relativity.Transfer.Sample.Enums
+namespace Relativity.Server.Transfer.SDK.Samples.Enums
 {
     public enum TransferMode
     {

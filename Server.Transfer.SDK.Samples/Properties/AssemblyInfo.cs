@@ -10,11 +10,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Relativity.Transfer.Sample")]
+[assembly: AssemblyTitle("Server.Transfer.SDK.Samples")]
 [assembly: AssemblyDescription("A Relativity transfer client API sample console application.")]
 [assembly: AssemblyConfiguration("Release")]
 [assembly: AssemblyCompany("Relativity ODA LLC")]
-[assembly: AssemblyProduct("Relativity.Transfer.Sample")]
+[assembly: AssemblyProduct("Server.Transfer.SDK.Samples")]
 [assembly: AssemblyCopyright("© Relativity")]
 [assembly: AssemblyTrademark("© Relativity")]
 [assembly: AssemblyCulture("")]
